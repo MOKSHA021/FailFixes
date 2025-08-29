@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -13,6 +13,15 @@ import {
   Grow,
   Alert,
   Chip,
+  CardContent,
+  CardActions,
+  IconButton,
+  CircularProgress,
+  Tabs,
+  Tab,
+  TextField,
+  InputAdornment,
+  Divider
 } from '@mui/material';
 import {
   TrendingUp,
@@ -26,12 +35,21 @@ import {
   EmojiObjects,
   GroupWork,
   School,
+  Favorite,
+  FavoriteBorder,
+  Comment,
+  Visibility,
+  Search,
+  NewReleases,
+  Timeline
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { storiesAPI, usersAPI } from '../services/api';
+import FollowButton from '../components/FollowButton';
+import UserSuggestions from '../components/UserSuggestions';
 
-// 🎨 **ELEGANT ANIMATIONS - Matching Login Style**
 const gentleFloat = keyframes`
   0%, 100% { 
     transform: translateY(0px) rotate(0deg); 
@@ -70,7 +88,6 @@ const softParticle = keyframes`
   }
 `;
 
-// 🏗️ **ELEGANT STYLED COMPONENTS**
 const BackgroundContainer = styled(Box)(({ theme }) => ({
   minHeight: '100vh',
   background: `
@@ -276,11 +293,132 @@ const FeatureChip = ({ icon, text, color, ...props }) => (
 function Home() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [mounted, setMounted] = React.useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [stories, setStories] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [feedType, setFeedType] = useState('all');
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadStories();
+    }
+  }, [isAuthenticated, activeTab, searchTerm, feedType]);
+
+  const loadStories = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      console.log('📰 Loading stories...', { feedType, activeTab, searchTerm });
+      let response;
+      
+      if (feedType === 'following') {
+        console.log('🔄 Loading following feed...');
+        response = await usersAPI.getUserFeed({ limit: 20 });
+        console.log('✅ Following feed loaded:', response.data);
+      } else {
+        const sortBy = activeTab === 0 ? 'recent' : activeTab === 1 ? 'popular' : 'views';
+        console.log('🔄 Loading public stories...', { sortBy });
+        response = await storiesAPI.getAllStories({ 
+          sortBy,
+          search: searchTerm,
+          limit: 20
+        });
+        console.log('✅ Public stories loaded:', response.data);
+      }
+      
+      const loadedStories = response.data.stories || [];
+      console.log('📊 Stories with follow status:', loadedStories.map(s => ({
+        author: s.displayAuthor || s.authorUsername,
+        isFollowing: s.isFollowing
+      })));
+      
+      setStories(loadedStories);
+      
+      if (response.data.debug) {
+        console.log('📊 Feed debug info:', response.data.debug);
+      }
+      
+    } catch (err) {
+      console.error('❌ Error loading stories:', err);
+      setError(`Failed to load ${feedType === 'following' ? 'following' : 'public'} stories`);
+      setStories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFollow = async (username) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      console.log('👥 Following user:', username);
+      const response = await usersAPI.followUser(username);
+      
+      if (response.data.success) {
+        const newFollowingStatus = response.data.isFollowing;
+        
+        setStories(prev => prev.map(story => {
+          const storyAuthor = story.displayAuthor || story.authorUsername;
+          if (storyAuthor === username) {
+            return {
+              ...story,
+              isFollowing: newFollowingStatus
+            };
+          }
+          return story;
+        }));
+        
+        console.log('✅ Follow status updated:', {
+          username,
+          isFollowing: newFollowingStatus
+        });
+      }
+      
+    } catch (err) {
+      console.error('❌ Error following user:', err);
+    }
+  };
+
+  const handleLike = async (storyId) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      console.log('👍 Liking story:', storyId);
+      const response = await storiesAPI.likeStory(storyId);
+      
+      setStories(prev => prev.map(story => 
+        story._id === storyId 
+          ? { 
+              ...story, 
+              isLiked: response.data.isLiked,
+              stats: { ...story.stats, likes: response.data.likesCount }
+            }
+          : story
+      ));
+      
+      console.log('✅ Like updated successfully');
+    } catch (err) {
+      console.error('❌ Error liking story:', err);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+  };
 
   const stats = [
     {
@@ -344,222 +482,395 @@ function Home() {
     { icon: <GroupWork />, text: 'Supportive Community', color: '#f8bbd9' }
   ];
 
-  return (
-    <BackgroundContainer>
-      {/* Floating Particles */}
-      {[...Array(6)].map((_, i) => (
-        <FloatingParticle
-          key={i}
-          delay={i * 0.4}
-          size={Math.random() * 25 + 10}
-          left={Math.random() * 100}
-          top={Math.random() * 100}
-        />
-      ))}
+  // 🎯 FIXED: Story Card with no follow buttons in Following Feed
+  const StoryCard = ({ story }) => {
+    const authorUsername = story.displayAuthor || story.authorUsername;
+    const isOwnStory = user && (
+      (story.author && story.author._id === user._id) ||
+      authorUsername === user.username ||
+      authorUsername === user.name
+    );
+    
+    const isFollowingAuthor = story.isFollowing || false;
+    
+    // 🎯 KEY CHANGE: Hide follow buttons in Following Feed completely
+    const isFollowingFeed = feedType === 'following';
+    const shouldShowFollowButton = isAuthenticated && !isOwnStory && !isFollowingAuthor && !isFollowingFeed;
+    const shouldShowFollowingChip = isAuthenticated && !isOwnStory && isFollowingAuthor && !isFollowingFeed;
 
-      <Container maxWidth="lg">
-        {/* Hero Section */}
-        <Fade in={mounted} timeout={800}>
-          <HeroCard>
-            <Avatar sx={{ 
-              width: 80, 
-              height: 80,
-              background: 'linear-gradient(135deg, #81c784, #aed581)',
-              margin: '0 auto 24px',
-              animation: `${gentleFloat} 4s ease-in-out infinite, ${softGlow} 3s ease-in-out infinite alternate`,
-            }}>
-              <AutoFixHigh sx={{ fontSize: '2.5rem' }} />
-            </Avatar>
-            
-            <Typography 
-              variant="h1" 
+    return (
+      <Card 
+        sx={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          cursor: 'pointer',
+          borderRadius: 3,
+          '&:hover': { 
+            transform: 'translateY(-2px)', 
+            boxShadow: 4 
+          },
+          transition: 'all 0.2s ease'
+        }}
+        onClick={() => navigate(`/story/${story._id}`)}
+      >
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Box display="flex" alignItems="center" mb={2}>
+            <Avatar 
               sx={{ 
-                fontWeight: 800, 
-                mb: 3,
-                fontSize: { xs: '2.5rem', md: '3.5rem' },
-                background: 'linear-gradient(135deg, #81c784 0%, #aed581 25%, #90caf9 50%, #f8bbd9 75%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                lineHeight: 1.1,
+                width: 32, 
+                height: 32, 
+                mr: 1,
+                bgcolor: 'primary.main',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 600
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/profile/${authorUsername}`);
               }}
             >
-              Transform Setbacks into Comebacks
-            </Typography>
-            
-            <Typography variant="h5" sx={{ 
-              color: 'rgba(0, 0, 0, 0.6)', 
-              mb: 4,
-              fontWeight: 400,
-              maxWidth: 600,
-              mx: 'auto',
-              lineHeight: 1.6,
-            }}>
-              Join our community of resilient individuals sharing inspiring journeys 
-              from challenges to extraordinary success
-            </Typography>
-
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1.5 }}>
-              {communityFeatures.map((feature, index) => (
-                <FeatureChip
-                  key={index}
-                  icon={feature.icon}
-                  text={feature.text}
-                  color={feature.color}
-                />
-              ))}
-            </Box>
-
-            {isAuthenticated && (
-              <Alert 
-                severity="success" 
+              {(authorUsername || 'A').charAt(0).toUpperCase()}
+            </Avatar>
+            <Box flexGrow={1}>
+              <Typography 
+                variant="subtitle2" 
                 sx={{ 
-                  mb: 4, 
-                  maxWidth: 500, 
-                  mx: 'auto',
-                  borderRadius: 3,
-                  background: 'rgba(129, 199, 132, 0.1)',
-                  border: '1px solid rgba(129, 199, 132, 0.3)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  '&:hover': { color: 'primary.main' }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/profile/${authorUsername}`);
                 }}
               >
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  Welcome back, {user.name}! Ready to inspire someone today? 🌟
-                </Typography>
-              </Alert>
-            )}
-
-            <Stack 
-              direction={{ xs: 'column', sm: 'row' }} 
-              spacing={3} 
-              justifyContent="center"
-            >
-              <ElegantButton
-                variant="primary"
-                size="large"
-                endIcon={<KeyboardArrowRight />}
-                onClick={() => navigate('/write')}
-              >
-                Share Your Story
-              </ElegantButton>
-              
-              <ElegantButton
+                {authorUsername}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {new Date(story.createdAt).toLocaleDateString()}
+                {/* 🎯 Show "Following" indicator in Following Feed */}
+                {isFollowingFeed && (
+                  <Chip
+                    label="Following"
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ ml: 1, height: 16, fontSize: '0.6rem' }}
+                  />
+                )}
+              </Typography>
+            </Box>
+            
+            {/* 🎯 FIXED: Only show follow button in Discover mode, not in Following Feed */}
+            {shouldShowFollowButton && (
+              <Button
+                size="small"
                 variant="outlined"
-                size="large"
-                startIcon={<Explore />}
-                onClick={() => navigate('/browse')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFollow(authorUsername);
+                }}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '0.75rem',
+                  minWidth: 'auto',
+                  px: 2
+                }}
               >
-                Discover Stories
-              </ElegantButton>
-            </Stack>
-          </HeroCard>
-        </Fade>
-
-        {/* Stats Section */}
-        <Grid container spacing={4} sx={{ mb: 8 }}>
-          {stats.map((stat, index) => (
-            <Grid item xs={12} md={4} key={index}>
-              <Grow in={mounted} timeout={1200 + index * 200}>
-                <StatCard>
-                  <Box sx={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: '50%',
-                    background: `${stat.color}20`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mx: 'auto',
-                    mb: 3,
-                    border: `2px solid ${stat.color}40`,
-                  }}>
-                    <stat.icon sx={{ fontSize: '1.75rem', color: stat.color }} />
-                  </Box>
-                  
-                  <Typography variant="h3" sx={{ 
-                    fontWeight: 800, 
-                    mb: 1,
-                    color: stat.color,
-                  }}>
-                    {stat.value}
-                  </Typography>
-                  
-                  <Typography variant="h6" sx={{ 
-                    fontWeight: 700, 
-                    mb: 1,
-                    color: 'text.primary',
-                  }}>
-                    {stat.title}
-                  </Typography>
-                  
-                  <Typography variant="body2" sx={{ 
-                    color: 'text.secondary',
-                    fontWeight: 500,
-                  }}>
-                    {stat.description}
-                  </Typography>
-                </StatCard>
-              </Grow>
-            </Grid>
-          ))}
-        </Grid>
-
-        {/* How It Works */}
-        <Grow in={mounted} timeout={1600}>
-          <FeatureCard>
-            <Typography variant="h3" sx={{ 
-              mb: 6, 
-              textAlign: 'center',
-              fontWeight: 800,
-              color: '#81c784',
-            }}>
-              How FailFixes Works
+                Follow
+              </Button>
+            )}
+            
+            {/* 🎯 FIXED: Only show Following chip in Discover mode, not in Following Feed */}
+            {shouldShowFollowingChip && (
+              <Chip
+                label="Following"
+                size="small"
+                color="primary"
+                variant="outlined"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFollow(authorUsername);
+                }}
+                sx={{
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                    borderColor: '#f44336',
+                    color: '#f44336'
+                  }
+                }}
+              />
+            )}
+          </Box>
+          
+          <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
+            {story.title}
+          </Typography>
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+            {story.excerpt || `${story.content.substring(0, 150)}...`}
+          </Typography>
+          
+          <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
+            <Chip 
+              label={story.category || 'General'} 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+            />
+            {story.metadata?.currentStatus && (
+              <Chip 
+                label={story.metadata.currentStatus} 
+                size="small" 
+                color="secondary"
+                variant="outlined"
+              />
+            )}
+          </Box>
+        </CardContent>
+        
+        <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+          <Box display="flex" alignItems="center" gap={2}>
+            <IconButton 
+              size="small" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLike(story._id);
+              }}
+              color={story.isLiked ? "error" : "default"}
+            >
+              {story.isLiked ? <Favorite /> : <FavoriteBorder />}
+            </IconButton>
+            <Typography variant="caption">
+              {story.stats?.likes || 0}
             </Typography>
             
-            <Grid container spacing={4}>
-              {features.map((feature, index) => (
-                <Grid item xs={12} sm={6} md={3} key={index}>
-                  <Box sx={{ textAlign: 'center', p: 2 }}>
-                    <Typography sx={{ 
-                      fontSize: '0.75rem', 
-                      fontWeight: 800,
-                      color: feature.color,
-                      mb: 2,
-                      letterSpacing: '1px',
-                      opacity: 0.8,
+            <Box display="flex" alignItems="center">
+              <Comment fontSize="small" color="action" />
+              <Typography variant="caption" sx={{ ml: 0.5 }}>
+                {story.stats?.comments || 0}
+              </Typography>
+            </Box>
+            
+            <Box display="flex" alignItems="center">
+              <Visibility fontSize="small" color="action" />
+              <Typography variant="caption" sx={{ ml: 0.5 }}>
+                {story.stats?.views || 0}
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Typography variant="caption" color="text.secondary">
+            {story.metadata?.readTime || Math.ceil((story.content || '').split(' ').length / 200) || 1} min read
+          </Typography>
+        </CardActions>
+      </Card>
+    );
+  };
+
+  // Show landing page for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <BackgroundContainer>
+        {/* Floating Particles */}
+        {[...Array(6)].map((_, i) => (
+          <FloatingParticle
+            key={i}
+            delay={i * 0.4}
+            size={Math.random() * 25 + 10}
+            left={Math.random() * 100}
+            top={Math.random() * 100}
+          />
+        ))}
+
+        <Container maxWidth="lg">
+          {/* Hero Section */}
+          <Fade in={mounted} timeout={800}>
+            <HeroCard>
+              <Avatar sx={{ 
+                width: 80, 
+                height: 80,
+                background: 'linear-gradient(135deg, #81c784, #aed581)',
+                margin: '0 auto 24px',
+                animation: `${gentleFloat} 4s ease-in-out infinite, ${softGlow} 3s ease-in-out infinite alternate`,
+              }}>
+                <AutoFixHigh sx={{ fontSize: '2.5rem' }} />
+              </Avatar>
+              
+              <Typography 
+                variant="h1" 
+                sx={{ 
+                  fontWeight: 800, 
+                  mb: 3,
+                  fontSize: { xs: '2.5rem', md: '3.5rem' },
+                  background: 'linear-gradient(135deg, #81c784 0%, #aed581 25%, #90caf9 50%, #f8bbd9 75%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  lineHeight: 1.1,
+                }}
+              >
+                Transform Setbacks into Comebacks
+              </Typography>
+              
+              <Typography variant="h5" sx={{ 
+                color: 'rgba(0, 0, 0, 0.6)', 
+                mb: 4,
+                fontWeight: 400,
+                maxWidth: 600,
+                mx: 'auto',
+                lineHeight: 1.6,
+              }}>
+                Join our community of resilient individuals sharing inspiring journeys 
+                from challenges to extraordinary success
+              </Typography>
+
+              <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+                {communityFeatures.map((feature, index) => (
+                  <FeatureChip
+                    key={index}
+                    icon={feature.icon}
+                    text={feature.text}
+                    color={feature.color}
+                  />
+                ))}
+              </Box>
+
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                spacing={3} 
+                justifyContent="center"
+              >
+                <ElegantButton
+                  variant="primary"
+                  size="large"
+                  endIcon={<KeyboardArrowRight />}
+                  onClick={() => navigate('/signup')}
+                >
+                  Join Our Community
+                </ElegantButton>
+                
+                <ElegantButton
+                  variant="outlined"
+                  size="large"
+                  startIcon={<Explore />}
+                  onClick={() => navigate('/browse')}
+                >
+                  Discover Stories
+                </ElegantButton>
+              </Stack>
+            </HeroCard>
+          </Fade>
+
+          {/* Stats Section */}
+          <Grid container spacing={4} sx={{ mb: 8 }}>
+            {stats.map((stat, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <Grow in={mounted} timeout={1200 + index * 200}>
+                  <StatCard>
+                    <Box sx={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: '50%',
+                      background: `${stat.color}20`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mx: 'auto',
+                      mb: 3,
+                      border: `2px solid ${stat.color}40`,
                     }}>
-                      STEP {feature.step}
-                    </Typography>
+                      <stat.icon sx={{ fontSize: '1.75rem', color: stat.color }} />
+                    </Box>
                     
-                    <Typography sx={{ 
-                      fontSize: '2.5rem', 
-                      mb: 2,
-                      animation: `${gentleFloat} ${3 + index * 0.5}s ease-in-out infinite`,
+                    <Typography variant="h3" sx={{ 
+                      fontWeight: 800, 
+                      mb: 1,
+                      color: stat.color,
                     }}>
-                      {feature.icon}
+                      {stat.value}
                     </Typography>
                     
                     <Typography variant="h6" sx={{ 
-                      mb: 2, 
-                      fontWeight: 700,
+                      fontWeight: 700, 
+                      mb: 1,
                       color: 'text.primary',
                     }}>
-                      {feature.title}
+                      {stat.title}
                     </Typography>
                     
                     <Typography variant="body2" sx={{ 
-                      color: 'text.secondary', 
-                      lineHeight: 1.6,
+                      color: 'text.secondary',
                       fontWeight: 500,
                     }}>
-                      {feature.description}
+                      {stat.description}
                     </Typography>
-                  </Box>
-                </Grid>
-              ))}
-            </Grid>
+                  </StatCard>
+                </Grow>
+              </Grid>
+            ))}
+          </Grid>
 
-            <Box textAlign="center" sx={{ mt: 6 }}>
-              {!isAuthenticated && (
+          {/* How It Works */}
+          <Grow in={mounted} timeout={1600}>
+            <FeatureCard>
+              <Typography variant="h3" sx={{ 
+                mb: 6, 
+                textAlign: 'center',
+                fontWeight: 800,
+                color: '#81c784',
+              }}>
+                How FailFixes Works
+              </Typography>
+              
+              <Grid container spacing={4}>
+                {features.map((feature, index) => (
+                  <Grid item xs={12} sm={6} md={3} key={index}>
+                    <Box sx={{ textAlign: 'center', p: 2 }}>
+                      <Typography sx={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 800,
+                        color: feature.color,
+                        mb: 2,
+                        letterSpacing: '1px',
+                        opacity: 0.8,
+                      }}>
+                        STEP {feature.step}
+                      </Typography>
+                      
+                      <Typography sx={{ 
+                        fontSize: '2.5rem', 
+                        mb: 2,
+                        animation: `${gentleFloat} ${3 + index * 0.5}s ease-in-out infinite`,
+                      }}>
+                        {feature.icon}
+                      </Typography>
+                      
+                      <Typography variant="h6" sx={{ 
+                        mb: 2, 
+                        fontWeight: 700,
+                        color: 'text.primary',
+                      }}>
+                        {feature.title}
+                      </Typography>
+                      
+                      <Typography variant="body2" sx={{ 
+                        color: 'text.secondary', 
+                        lineHeight: 1.6,
+                        fontWeight: 500,
+                      }}>
+                        {feature.description}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Box textAlign="center" sx={{ mt: 6 }}>
                 <ElegantButton
                   variant="primary"
                   size="large"
@@ -568,10 +879,180 @@ function Home() {
                 >
                   Join Our Community
                 </ElegantButton>
-              )}
-            </Box>
-          </FeatureCard>
-        </Grow>
+              </Box>
+            </FeatureCard>
+          </Grow>
+        </Container>
+      </BackgroundContainer>
+    );
+  }
+
+  // Show feed for authenticated users
+  return (
+    <BackgroundContainer>
+      <Container maxWidth="lg">
+        <Grid container spacing={4}>
+          {/* Main Feed */}
+          <Grid item xs={12} md={8}>
+            {/* Welcome Message */}
+            <Paper sx={{ p: 3, mb: 3, textAlign: 'center', borderRadius: 3 }}>
+              <Typography variant="h4" gutterBottom sx={{ 
+                fontWeight: 800,
+                background: 'linear-gradient(135deg, #81c784 0%, #aed581 25%, #90caf9 50%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
+                Welcome back, {user.name}! 👋
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Ready to inspire someone today or discover new stories?
+              </Typography>
+            </Paper>
+
+            {/* Feed Type Toggle */}
+            <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+              <Tabs 
+                value={feedType === 'all' ? 0 : 1}
+                onChange={(e, newValue) => setFeedType(newValue === 0 ? 'all' : 'following')}
+                variant="fullWidth"
+                sx={{
+                  '& .MuiTab-root': {
+                    fontWeight: 600,
+                    textTransform: 'none'
+                  }
+                }}
+              >
+                <Tab icon={<Explore />} label="Discover Stories" />
+                <Tab icon={<Timeline />} label="Following Feed" />
+              </Tabs>
+            </Paper>
+
+            {feedType === 'all' && (
+              <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+                <Tabs 
+                  value={activeTab} 
+                  onChange={(e, newValue) => setActiveTab(newValue)}
+                  variant="fullWidth"
+                  sx={{
+                    '& .MuiTab-root': {
+                      fontWeight: 600,
+                      textTransform: 'none'
+                    }
+                  }}
+                >
+                  <Tab icon={<NewReleases />} label="Recent" />
+                  <Tab icon={<TrendingUp />} label="Popular" />
+                  <Tab icon={<Visibility />} label="Most Viewed" />
+                </Tabs>
+              </Paper>
+            )}
+
+            {/* Search Bar */}
+            <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+              <form onSubmit={handleSearch}>
+                <TextField
+                  fullWidth
+                  placeholder="Search inspiring stories..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2
+                    }
+                  }}
+                />
+              </form>
+            </Paper>
+
+            {/* Stories */}
+            {loading ? (
+              <Box display="flex" justifyContent="center" py={8}>
+                <CircularProgress size={50} sx={{ color: '#81c784' }} />
+              </Box>
+            ) : error ? (
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }}>
+                {error}
+                <Button 
+                  onClick={loadStories} 
+                  sx={{ ml: 2 }}
+                  variant="outlined"
+                  size="small"
+                >
+                  Retry
+                </Button>
+              </Alert>
+            ) : stories.length === 0 ? (
+              <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                  {feedType === 'following' ? 'No stories from people you follow' : 'No stories found'}
+                </Typography>
+                <Typography color="text.secondary" paragraph>
+                  {feedType === 'following' 
+                    ? 'Follow some users to see their stories here! Check out suggested users in the sidebar.'
+                    : 'Try adjusting your search or filters.'
+                  }
+                </Typography>
+                {feedType === 'following' && (
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setFeedType('all')}
+                    sx={{
+                      background: 'linear-gradient(135deg, #81c784, #aed581)',
+                      '&:hover': { background: 'linear-gradient(135deg, #66bb6a, #81c784)' }
+                    }}
+                  >
+                    Browse All Stories
+                  </Button>
+                )}
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {stories.map((story) => (
+                  <Grid item xs={12} key={story._id}>
+                    <StoryCard story={story} />
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Grid>
+
+          {/* Sidebar */}
+          <Grid item xs={12} md={4}>
+            <UserSuggestions />
+            
+            <Paper sx={{ p: 3, mt: 3, textAlign: 'center', borderRadius: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                fontWeight: 700,
+                color: '#81c784'
+              }}>
+                Share Your Story
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Have a failure-to-success story? Share it with our community and inspire others!
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<Create />}
+                onClick={() => navigate('/write')}
+                fullWidth
+                sx={{
+                  background: 'linear-gradient(135deg, #81c784, #aed581)',
+                  '&:hover': { background: 'linear-gradient(135deg, #66bb6a, #81c784)' }
+                }}
+              >
+                Write Story
+              </Button>
+            </Paper>
+          </Grid>
+        </Grid>
       </Container>
     </BackgroundContainer>
   );

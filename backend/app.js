@@ -3,16 +3,47 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const config = require('./config/config');
-const { errorHandler } = require('./middleware/errorhandler');
 
-// Routes
+// Import Routes
 const authRoutes = require('./routes/auth');
 const storyRoutes = require('./routes/stories');
 const userRoutes = require('./routes/users');
 
 const app = express();
+
+// Trust proxy for rate limiting
+app.set('trust proxy', 1);
+
+// 🎯 CORS - MUST BE FIRST
+app.use(cors({
+  origin: [
+    'http://localhost:3000', 
+    'http://127.0.0.1:3000',
+    'http://localhost:3001'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin'
+  ]
+}));
+
+// Handle preflight requests
+app.options('*', cors());
+
+// 🎯 BODY PARSING - MUST BE BEFORE ROUTES
+app.use(express.json({ 
+  limit: '10mb',
+  strict: false
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb' 
+}));
 
 // Security middleware
 app.use(helmet({
@@ -20,119 +51,89 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
+// Compression
 app.use(compression());
-app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
 
-// Rate limiting
-const generalLimiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxRequests,
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again later.'
-  }
-});
-app.use('/api/', generalLimiter);
-
-// 🎯 UPDATED: Enhanced CORS configuration with PATCH support
-const corsOptions = {
-  origin: config.cors.origin,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // ✅ Added PATCH and OPTIONS
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Cache-Control'
-  ],
-  exposedHeaders: ['X-Total-Count'], // Optional: expose custom headers to client
-  optionsSuccessStatus: 200, // Support legacy browsers
-  preflightContinue: false // Don't pass preflight to next handler
-};
-
-app.use(cors(corsOptions));
-
-// 🎯 NEW: Handle preflight OPTIONS requests explicitly
-app.options('*', cors(corsOptions));
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// 🎯 NEW: Debug middleware for CORS (development only)
-if (config.nodeEnv === 'development') {
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'No Origin'}`);
-    if (req.method === 'OPTIONS') {
-      console.log('🔄 Preflight request detected');
-    }
-    next();
-  });
+// Logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
 }
 
-// Route mounting
-app.use('/api/auth', authRoutes);
-app.use('/api/stories', storyRoutes);
-app.use('/api/users', userRoutes);
+// 🎯 GLOBAL DEBUG MIDDLEWARE
+app.use((req, res, next) => {
+  console.log(`\n🌐 === GLOBAL REQUEST LOG ===`);
+  console.log(`${req.method} ${req.originalUrl}`);
+  console.log('Headers:', {
+    'content-type': req.headers['content-type'],
+    'authorization': req.headers.authorization ? 'Bearer [PRESENT]' : 'None',
+    'origin': req.headers.origin
+  });
+  console.log('Body:', req.body);
+  console.log('Params:', req.params);
+  console.log('Query:', req.query);
+  console.log('=== END GLOBAL LOG ===\n');
+  next();
+});
 
-// Base API info route
-app.get('/api', (req, res) => {
+// 🎯 API ROUTES
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/stories', storyRoutes);
+
+// Root endpoint
+app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Welcome to FailFixes API',
+    message: 'FailFixes API Server',
     version: '1.0.0',
-    cors: {
-      enabled: true,
-      allowedOrigins: Array.isArray(config.cors.origin) ? config.cors.origin : [config.cors.origin],
-      allowedMethods: corsOptions.methods
-    }
+    timestamp: new Date().toISOString()
   });
 });
 
-// 🎯 UPDATED: Enhanced health check route
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     status: 'healthy',
-    message: 'FailFixes API is running! 🚀',
     timestamp: new Date().toISOString(),
-    cors: {
-      enabled: true,
-      allowedMethods: corsOptions.methods,
-      allowedHeaders: corsOptions.allowedHeaders
-    },
-    environment: config.nodeEnv || 'development'
+    uptime: process.uptime()
   });
 });
 
-// 🎯 NEW: CORS test endpoint for debugging
-app.get('/api/cors-test', (req, res) => {
-  res.json({
-    success: true,
-    message: 'CORS is working correctly!',
-    origin: req.headers.origin || 'No origin header',
-    method: req.method,
-    headers: {
-      'access-control-allow-origin': res.getHeader('Access-Control-Allow-Origin'),
-      'access-control-allow-methods': res.getHeader('Access-Control-Allow-Methods'),
-      'access-control-allow-headers': res.getHeader('Access-Control-Allow-Headers')
-    }
-  });
-});
-
-// 404 handler for other routes not matched
+// 🎯 404 Handler
 app.use('*', (req, res) => {
+  console.log(`❌ 404: ${req.method} ${req.originalUrl} not found`);
   res.status(404).json({
     success: false,
-    message: 'API endpoint not found',
-    path: req.originalUrl,
-    method: req.method
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+    availableRoutes: [
+      'GET /api/health',
+      'POST /api/auth/login',
+      'POST /api/auth/register',
+      'POST /api/users/:username/follow'
+    ]
   });
 });
 
-// Error handler middleware
-app.use(errorHandler);
+// 🎯 GLOBAL ERROR HANDLER
+app.use((err, req, res, next) => {
+  console.error('\n❌ === GLOBAL ERROR ===');
+  console.error('URL:', req.originalUrl);
+  console.error('Method:', req.method);
+  console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('=== END ERROR ===\n');
+  
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : err.message,
+    ...(process.env.NODE_ENV === 'development' && { 
+      error: err.message,
+      stack: err.stack 
+    })
+  });
+});
 
 module.exports = app;

@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 // Import Components
 import Header from './components/layout/header';
 import Footer from './components/layout/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Import Pages
 import Home from './pages/Home';
@@ -15,6 +16,9 @@ import Browse from './pages/Browse';
 import CreateStory from './pages/CreateStory';
 import ViewStory from './pages/ViewStory';
 import Dashboard from './pages/Dashboard';
+import UserProfile from './pages/UserProfile';
+import FollowersPage from './pages/Followers';
+import FollowingPage from './pages/Following';
 
 // 🎨 **ENHANCED THEME CONFIGURATION**
 const theme = createTheme({
@@ -278,7 +282,7 @@ function App() {
               zIndex: 1
             }}>
               <Routes>
-                {/* 🏠 Home Route */}
+                {/* 🏠 Home Route - Landing + Feed combined */}
                 <Route path="/" element={<Home />} />
                 
                 {/* 🔐 Authentication Routes */}
@@ -287,19 +291,44 @@ function App() {
                 
                 {/* 📚 Story Routes */}
                 <Route path="/browse" element={<Browse />} />
-                <Route path="/stories" element={<Browse />} /> {/* Alternative path */}
+                <Route path="/stories" element={<Browse />} />
                 
                 {/* ✍️ Create Story Routes */}
-                <Route path="/write" element={<CreateStory />} />
-                <Route path="/create" element={<CreateStory />} />
-                <Route path="/create-story" element={<CreateStory />} />
+                <Route path="/write" element={
+                  <ProtectedRoute>
+                    <CreateStory />
+                  </ProtectedRoute>
+                } />
+                <Route path="/create" element={
+                  <ProtectedRoute>
+                    <CreateStory />
+                  </ProtectedRoute>
+                } />
+                <Route path="/create-story" element={
+                  <ProtectedRoute>
+                    <CreateStory />
+                  </ProtectedRoute>
+                } />
                 
                 {/* 📖 View Story Route */}
                 <Route path="/story/:id" element={<ViewStory />} />
                 
                 {/* 📊 Dashboard Route */}
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile" element={<Dashboard />} /> {/* Alternative path */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                
+                {/* 👤 User Profile Routes */}
+                <Route path="/profile/:username" element={<UserProfile />} />
+                <Route path="/profile/:username/followers" element={<FollowersPage />} />
+                <Route path="/profile/:username/following" element={<FollowingPage />} />
                 
                 {/* 🔄 Redirects for legacy routes */}
                 <Route path="/home" element={<Navigate to="/" replace />} />

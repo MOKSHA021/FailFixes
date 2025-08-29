@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   AutoFixHigh, Menu as MenuIcon, Dashboard, Create, Explore, Person,
-  Settings, Logout, Notifications, Login, PersonAdd, Home, Close
+  Settings, Logout, Notifications, Login, PersonAdd, Home, Close, Timeline
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -256,8 +256,10 @@ function Header() {
   const navigation = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Browse', path: '/browse', icon: Explore },
-    { name: 'Write', path: '/write', icon: Create },
-    ...(isAuthenticated ? [{ name: 'Dashboard', path: '/dashboard', icon: Dashboard }] : []),
+    ...(isAuthenticated ? [
+      { name: 'Write', path: '/write', icon: Create },
+      { name: 'Dashboard', path: '/dashboard', icon: Dashboard }
+    ] : [])
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -350,7 +352,7 @@ function Header() {
         <>
           <Divider sx={{ mx: 2, my: 2 }} />
           <List>
-            <DrawerListItem onClick={() => { navigate('/profile'); setMobileOpen(false); }}>
+            <DrawerListItem onClick={() => { navigate(`/profile/${user?.username || user?.name}`); setMobileOpen(false); }}>
               <ListItemIcon sx={{ minWidth: 40 }}>
                 <Person />
               </ListItemIcon>
@@ -385,8 +387,8 @@ function Header() {
       <StyledAppBar position="sticky" elevation={0}>
         <Container maxWidth="lg">
           <Toolbar sx={{ 
-            py: 2.2,           // Increased from 1 to 2.2 (about 10% larger)
-            minHeight: 70,     // Explicit min height (10% more than default 64px)
+            py: 2.2,
+            minHeight: 70,
           }}>
             {isMobile && (
               <IconButton
@@ -406,8 +408,8 @@ function Header() {
               <Avatar sx={{ 
                 background: 'linear-gradient(135deg, #81c784, #aed581)',
                 animation: `${gentleFloat} 4s ease-in-out infinite, ${softGlow} 3s ease-in-out infinite alternate`,
-                width: 52,         // Increased from 48 to 52
-                height: 52         // Increased from 48 to 52
+                width: 52,
+                height: 52
               }}>
                 <AutoFixHigh />
               </Avatar>
@@ -447,8 +449,8 @@ function Header() {
                     sx={{ 
                       cursor: 'pointer',
                       background: 'linear-gradient(135deg, #81c784, #aed581)',
-                      width: 44,        // Increased from 40 to 44
-                      height: 44,       // Increased from 40 to 44
+                      width: 44,
+                      height: 44,
                       fontWeight: 700,
                       transition: 'all 0.3s ease',
                       '&:hover': { 
@@ -494,7 +496,7 @@ function Header() {
           <Dashboard sx={{ mr: 2, color: '#81c784' }} />
           Dashboard
         </MenuItem>
-        <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
+        <MenuItem onClick={() => { navigate(`/profile/${user?.username || user?.name}`); handleMenuClose(); }}>
           <Person sx={{ mr: 2, color: '#81c784' }} />
           Profile
         </MenuItem>

@@ -32,7 +32,7 @@ exports.errorHandler = (error, req, res, next) => {
   
   // MongoDB duplicate key error
   if (error.code === 11000) {
-    const field = Object.keys(error.keyPattern)[0];
+    const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || 'field';
     return res.status(400).json({
       success: false,
       message: `${field} already exists`
@@ -53,13 +53,37 @@ exports.errorHandler = (error, req, res, next) => {
       message: 'Token expired'
     });
   }
+
+  // MongoDB connection errors
+  if (error.name === 'MongoError' || error.name === 'MongooseError') {
+    return res.status(503).json({
+      success: false,
+      message: 'Database connection error'
+    });
+  }
+
+  // Request timeout
+  if (error.code === 'ETIMEDOUT') {
+    return res.status(408).json({
+      success: false,
+      message: 'Request timeout'
+    });
+  }
+
+  // Request entity too large
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({
+      success: false,
+      message: 'Request entity too large'
+    });
+  }
   
   // Default error
-  res.status(500).json({
+  res.status(error.statusCode || 500).json({
     success: false,
     message: process.env.NODE_ENV === 'production' 
       ? 'Something went wrong on our end. Please try again.' 
-      : error.message,
+      : error.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { 
       error: error.message,
       stack: error.stack 

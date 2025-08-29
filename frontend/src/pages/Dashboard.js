@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-console */
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -11,95 +12,97 @@ import {
   Chip,
   LinearProgress,
   Paper,
-  IconButton,
   Fade,
   Grow,
-  Divider,
   List,
   ListItem,
   ListItemAvatar,
   ListItemText,
   useTheme,
   useMediaQuery,
+  Skeleton,
+  Alert,
+  CircularProgress,
+  Divider,
+  AvatarGroup
 } from '@mui/material';
 import {
-  TrendingUp,
   Create,
   Visibility,
   Favorite,
-  Share,
-  EmojiEvents,
-  Groups,
   Timeline,
-  Auto_AwEsome,
+  Celebration,
+  ArrowForward,
   AddCircle,
   Explore,
   Star,
   LocalFireDepartment,
-  Psychology,
-  Celebration,
-  ArrowForward,
+  Refresh,
+  People,
+  PersonAdd,
+  Comment
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { dashboardAPI } from '../services/api';
 
 // Animations
 const float = keyframes`
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-`;
-
-const shimmer = keyframes`
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
 `;
 
 const pulse = keyframes`
-  0%, 100% { box-shadow: 0 0 20px rgba(129, 199, 132, 0.3); }
-  50% { box-shadow: 0 0 35px rgba(129, 199, 132, 0.6); }
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(129, 199, 132, 0.4);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(129, 199, 132, 0.8);
+    transform: scale(1.05);
+  }
 `;
 
 // Styled Components
-const WelcomeSection = styled(Paper)(({ theme }) => ({
+const BackgroundContainer = styled(Box)(({ theme }) => ({
+  minHeight: '100vh',
   background: `
-    linear-gradient(135deg, 
-      rgba(129, 199, 132, 0.08) 0%, 
-      rgba(144, 202, 249, 0.08) 50%,
-      rgba(174, 213, 129, 0.08) 100%
-    )
+    radial-gradient(circle at 20% 20%, rgba(129, 199, 132, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(144, 202, 249, 0.15) 0%, transparent 50%),
+    linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 25%, #fef7f0 50%, #f0fff4 75%, #f5f8ff 100%)
   `,
-  borderRadius: '24px',
-  padding: theme.spacing(4, 3),
-  marginBottom: theme.spacing(4),
-  border: '1px solid rgba(129, 199, 132, 0.15)',
-  position: 'relative',
-  overflow: 'hidden',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: '-100%',
-    width: '100%',
-    height: '100%',
-    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
-    animation: `${shimmer} 3s ease-in-out infinite`,
-  }
+  paddingTop: theme.spacing(4),
+  paddingBottom: theme.spacing(8),
 }));
 
-const StatsCard = styled(Card)(({ theme, color }) => ({
-  borderRadius: '20px',
-  overflow: 'hidden',
-  background: '#ffffff',
-  border: '1px solid rgba(0, 0, 0, 0.06)',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
-  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-  position: 'relative',
+const WelcomeSection = styled(Paper)(({ theme }) => ({
+  background: `linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)`,
+  backdropFilter: 'blur(20px)',
+  borderRadius: '28px',
+  padding: theme.spacing(6),
+  marginBottom: theme.spacing(6),
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1)'
+}));
+
+const StatsCard = styled(Card)(({ color }) => ({
+  borderRadius: '24px',
+  background: `linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)`,
+  backdropFilter: 'blur(15px)',
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+  transition: 'all 0.4s ease',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
   '&:hover': {
-    transform: 'translateY(-8px)',
-    boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12)',
+    transform: 'translateY(-12px) scale(1.03)',
+    boxShadow: '0 32px 80px rgba(0, 0, 0, 0.15)',
     '& .icon-container': {
-      transform: 'scale(1.1) rotate(5deg)',
+      transform: 'scale(1.15) rotate(10deg)',
+      background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+    },
+    '& .stat-value': {
+      transform: 'scale(1.1)',
+      color: color,
     }
   },
   '&::before': {
@@ -109,534 +112,657 @@ const StatsCard = styled(Card)(({ theme, color }) => ({
     left: 0,
     right: 0,
     height: '4px',
-    background: color,
+    background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+    borderRadius: '24px 24px 0 0',
   }
 }));
 
-const IconContainer = styled(Box)(({ theme, color }) => ({
-  width: 80,
-  height: 80,
-  borderRadius: '20px',
-  background: `${color}15`,
+const IconContainer = styled(Box)(({ color }) => ({
+  width: 70, // Reduced from 90
+  height: 70, // Reduced from 90
+  borderRadius: '18px', // Reduced from 22px
+  background: `linear-gradient(135deg, ${color}15, ${color}25)`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  marginBottom: theme.spacing(2),
-  transition: 'all 0.3s ease',
-  border: `2px solid ${color}20`,
+  marginBottom: '20px', // Reduced from 24px
+  marginLeft: 'auto',
+  marginRight: 'auto',
+  transition: 'all 0.4s ease',
+  border: `2px solid ${color}30`,
 }));
 
-const ActionButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
-  borderRadius: '16px',
-  padding: '14px 28px',
+const ActionButton = styled(Button)(({ variant: buttonVariant }) => ({
+  borderRadius: '18px',
+  padding: '16px 32px',
   fontSize: '1.1rem',
   fontWeight: 700,
   textTransform: 'none',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  position: 'relative',
-  overflow: 'hidden',
+  transition: 'all 0.3s ease',
   ...(buttonVariant === 'primary' && {
     background: 'linear-gradient(135deg, #81c784 0%, #aed581 50%, #90caf9 100%)',
     color: 'white',
-    boxShadow: '0 6px 20px rgba(129, 199, 132, 0.3)',
+    boxShadow: '0 8px 25px rgba(129, 199, 132, 0.4)',
     '&:hover': {
-      transform: 'translateY(-3px) scale(1.02)',
-      boxShadow: '0 12px 35px rgba(129, 199, 132, 0.4)',
+      transform: 'translateY(-4px) scale(1.05)',
+      boxShadow: '0 16px 40px rgba(129, 199, 132, 0.5)',
     }
   }),
   ...(buttonVariant === 'outlined' && {
-    border: '2px solid #1976d2',
-    color: '#1976d2',
-    background: 'rgba(25, 118, 210, 0.02)',
+    border: '2px solid #81c784',
+    color: '#81c784',
+    background: 'rgba(255, 255, 255, 0.1)',
     '&:hover': {
-      background: 'rgba(25, 118, 210, 0.08)',
-      transform: 'translateY(-2px)',
+      background: 'linear-gradient(135deg, rgba(129, 199, 132, 0.1), rgba(144, 202, 249, 0.1))',
+      transform: 'translateY(-2px) scale(1.02)',
     }
   })
 }));
 
-const ActivityCard = styled(Card)(({ theme }) => ({
-  borderRadius: '16px',
-  background: '#ffffff',
-  border: '1px solid rgba(0, 0, 0, 0.06)',
-  marginBottom: theme.spacing(2),
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'translateX(4px)',
-    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.08)',
-  }
-}));
-
-const ProgressSection = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(66, 165, 245, 0.05) 100%)',
-  borderRadius: '16px',
-  padding: theme.spacing(3),
-  border: '1px solid rgba(25, 118, 210, 0.1)',
-}));
-
 function Dashboard() {
-  const { user, isAuthenticated } = useAuth(); // Use AuthContext
-  const [stats, setStats] = useState({
-    storiesShared: 5,
-    viewsReceived: 1247,
-    likesReceived: 89,
-    communitiesHelped: 12
-  });
-  const [recentActivity, setRecentActivity] = useState([]);
+  const { user, isAuthenticated } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  useEffect(() => {
-    setMounted(true);
-    
-    // Sample recent activity
-    setRecentActivity([
-      {
-        id: 1,
-        type: 'story_shared',
-        title: 'Your story "From Startup Failure to Success" was published',
-        time: '2 hours ago',
-        icon: <Create />,
-        color: '#4caf50'
-      },
-      {
-        id: 2,
-        type: 'community_interaction',
-        title: 'Sarah Johnson liked your story',
-        time: '5 hours ago',
-        icon: <Favorite />,
-        color: '#f44336'
-      },
-      {
-        id: 3,
-        type: 'milestone',
-        title: 'Congratulations! You reached 1000 views',
-        time: '1 day ago',
-        icon: <EmojiEvents />,
-        color: '#ff9800'
+  // 🎯 FIXED: Memoized fetch function to prevent infinite loops
+  const fetchDashboardData = useCallback(async (isManualRefresh = false) => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      if (isManualRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    ]);
-  }, []);
+      setError('');
 
+      console.log('📊 Fetching dashboard data...');
+      const response = await dashboardAPI.getDashboard();
+      setDashboardData(response.data.dashboard);
+      
+      console.log('✅ Dashboard data loaded:', response.data.dashboard);
+    } catch (err) {
+      console.error('❌ Dashboard error:', err);
+      setError('Failed to load dashboard data');
+      
+      // Fallback data
+      if (!dashboardData) {
+        setDashboardData({
+          user: { name: user?.name || 'User', username: user?.username || 'user' },
+          stats: { 
+            storiesShared: 0, 
+            totalViews: 0, 
+            totalLikes: 0,
+            followersCount: 0,
+            followingCount: 0
+          },
+          recentStories: [],
+          recentFollowers: [],
+          recentFollowing: [],
+          growth: { growthRate: 0, isPositive: true }
+        });
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      setMounted(true);
+    }
+  }, [isAuthenticated, user, dashboardData]);
+
+  // 🎯 FIXED: Controlled useEffect with proper dependencies
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDashboard = async () => {
+      if (isMounted) {
+        // Check for refresh from story creation
+        if (location.state?.refresh) {
+          console.log('🔄 Refreshing from story creation');
+          await fetchDashboardData(true);
+          // Clear the refresh state
+          navigate(location.pathname, { replace: true, state: {} });
+        } else {
+          await fetchDashboardData();
+        }
+      }
+    };
+
+    loadDashboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [location.state?.refresh]);
+
+  // Manual refresh handler
+  const handleManualRefresh = useCallback(() => {
+    console.log('🔄 Manual refresh triggered');
+    fetchDashboardData(true);
+  }, [fetchDashboardData]);
+
+  if (!isAuthenticated || !user) {
+    return (
+      <BackgroundContainer>
+        <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+          <Typography variant="h4" sx={{ mb: 2, fontWeight: 800, color: '#2e7d32' }}>
+            Welcome to FailFixes! 🚀
+          </Typography>
+          <Typography variant="h6" sx={{ mb: 4, color: '#64748b' }}>
+            Please sign in to access your dashboard
+          </Typography>
+          <ActionButton variant="primary" size="large" onClick={() => navigate('/login')}>
+            Sign In
+          </ActionButton>
+        </Container>
+      </BackgroundContainer>
+    );
+  }
+
+  if (loading && !dashboardData) {
+    return (
+      <BackgroundContainer>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Skeleton variant="rectangular" height={200} sx={{ borderRadius: '24px', mb: 4 }} />
+          <Grid container spacing={3}>
+            {[1, 2, 3, 4].map((i) => (
+              <Grid item xs={12} sm={3} key={i}>
+                <Skeleton variant="rectangular" height={200} sx={{ borderRadius: '24px' }} />
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </BackgroundContainer>
+    );
+  }
+
+  // 🎯 UPDATED: Enhanced stats data with followers
   const statsData = [
     {
       title: 'Stories Shared',
-      value: stats.storiesShared,
-      icon: <Create sx={{ fontSize: 40 }} />,
+      value: dashboardData?.stats?.storiesShared || 0,
+      icon: <Create sx={{ fontSize: 32 }} />, // Reduced from 45
       color: '#4caf50',
       description: 'Inspiring stories you\'ve shared'
     },
     {
       title: 'Total Views',
-      value: stats.viewsReceived.toLocaleString(),
-      icon: <Visibility sx={{ fontSize: 40 }} />,
-      color: '#2196f3',
+      value: (dashboardData?.stats?.totalViews || 0).toLocaleString(),
+      icon: <Visibility sx={{ fontSize: 32 }} />, // Reduced from 45
+      color: '#2196f3', 
       description: 'People who read your stories'
     },
     {
       title: 'Hearts Received',
-      value: stats.likesReceived,
-      icon: <Favorite sx={{ fontSize: 40 }} />,
+      value: dashboardData?.stats?.totalLikes || dashboardData?.stats?.heartsReceived || 0,
+      icon: <Favorite sx={{ fontSize: 32 }} />, // Reduced from 45
       color: '#f44336',
       description: 'Community appreciation'
     },
     {
-      title: 'Communities Helped',
-      value: stats.communitiesHelped,
-      icon: <Groups sx={{ fontSize: 40 }} />,
-      color: '#ff9800',
-      description: 'Lives you\'ve touched'
+      title: 'Followers',
+      value: dashboardData?.stats?.followersCount || 0,
+      icon: <People sx={{ fontSize: 32 }} />,
+      color: '#9c27b0',
+      description: 'People following your journey'
     }
   ];
 
-  if (!isAuthenticated || !user) {
-    return (
-      <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
-        <Typography variant="h4" sx={{ mb: 2, color: '#1e293b' }}>
-          Please Sign In
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 4, color: '#64748b' }}>
-          Access your dashboard to track your journey and share your stories.
-        </Typography>
-        <ActionButton
-          variant="primary"
-          onClick={() => navigate('/login')}
-          size="large"
-        >
-          Sign In to Continue
-        </ActionButton>
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Welcome Section */}
-      <Fade in={mounted} timeout={1000}>
-        <WelcomeSection elevation={0}>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={8}>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Avatar
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    mr: 3,
-                    background: 'linear-gradient(135deg, #81c784, #90caf9)',
-                    fontSize: '2rem',
-                    fontWeight: 800,
-                    animation: `${pulse} 3s ease-in-out infinite`,
-                  }}
-                  src={user.avatar}
-                >
-                  {user.name?.charAt(0) || 'U'}
-                </Avatar>
-                <Box>
-                  <Typography 
-                    variant="h3" 
-                    sx={{ 
-                      fontWeight: 800, 
-                      color: '#1e293b',
-                      fontSize: { xs: '2rem', md: '3rem' },
-                      mb: 1
+    <BackgroundContainer>
+      <Container maxWidth="lg">
+        {error && (
+          <Alert severity="warning" sx={{ mb: 4, borderRadius: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Welcome Section */}
+        <Fade in={mounted} timeout={1000}>
+          <WelcomeSection>
+            <Grid container spacing={4} alignItems="center">
+              <Grid item xs={12} md={8}>
+                <Box display="flex" alignItems="center" mb={2}>
+                  <Avatar
+                    sx={{
+                      width: 90,
+                      height: 90,
+                      mr: 3,
+                      background: 'linear-gradient(135deg, #81c784, #aed581)',
+                      fontSize: '2.5rem',
+                      fontWeight: 800,
+                      animation: `${float} 6s ease-in-out infinite`,
+                      boxShadow: '0 8px 25px rgba(129, 199, 132, 0.4)',
                     }}
                   >
-                    Welcome back, {user.name || 'User'}! 👋
-                  </Typography>
-                  <Typography 
-                    variant="h6" 
-                    sx={{ 
-                      color: '#64748b',
-                      fontWeight: 500,
-                      fontSize: '1.25rem'
-                    }}
+                    {dashboardData?.user?.name?.charAt(0) || user?.name?.charAt(0) || 'U'}
+                  </Avatar>
+                  <Box>
+                    <Typography 
+                      variant="h2" 
+                      sx={{ 
+                        fontWeight: 800, 
+                        background: 'linear-gradient(135deg, #2e7d32, #81c784, #90caf9)',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: { xs: '2.5rem', md: '3.5rem' },
+                        mb: 1
+                      }}
+                    >
+                      Welcome back, {dashboardData?.user?.name || user?.name || 'User'}! 👋
+                    </Typography>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ 
+                        color: '#64748b',
+                        fontWeight: 500,
+                        fontSize: '1.5rem'
+                      }}
+                    >
+                      Ready to inspire someone today? ✨
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Box display="flex" flexDirection="column" gap={3}>
+                  <ActionButton
+                    variant="primary"
+                    startIcon={<Create />}
+                    endIcon={<ArrowForward />}
+                    onClick={() => navigate('/create-story')}
+                    fullWidth
+                    size="large"
                   >
-                    Ready to inspire someone today?
+                    Share Your Story
+                  </ActionButton>
+                  <ActionButton
+                    variant="outlined"
+                    startIcon={refreshing ? <CircularProgress size={20} /> : <Refresh />}
+                    onClick={handleManualRefresh}
+                    disabled={refreshing}
+                    fullWidth
+                  >
+                    {refreshing ? 'Refreshing...' : 'Refresh Data'}
+                  </ActionButton>
+                </Box>
+              </Grid>
+            </Grid>
+          </WelcomeSection>
+        </Fade>
+
+        {/* Stats Cards */}
+        <Grid container spacing={4} sx={{ mb: 6 }}>
+          {statsData.map((stat, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <Grow in={mounted} timeout={1200 + index * 200}>
+                <StatsCard color={stat.color}>
+                  <CardContent sx={{ p: 4, textAlign: 'center' }}>
+                    <IconContainer className="icon-container" color={stat.color}>
+                      {React.cloneElement(stat.icon, { 
+                        sx: { fontSize: 32, color: stat.color } // Reduced from 45
+                      })}
+                    </IconContainer>
+                    
+                    <Typography 
+                      className="stat-value"
+                      variant="h2" 
+                      sx={{ 
+                        fontWeight: 900, 
+                        color: '#1e293b', 
+                        mb: 1,
+                        fontSize: { xs: '2rem', md: '2.5rem' }, // Reduced
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      {stat.value}
+                    </Typography>
+                    
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        fontWeight: 700, 
+                        color: stat.color,
+                        mb: 1,
+                        fontSize: '1.1rem' // Reduced from 1.3rem
+                      }}
+                    >
+                      {stat.title}
+                    </Typography>
+                    
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: '#64748b',
+                        fontSize: '0.9rem' // Reduced
+                      }}
+                    >
+                      {stat.description}
+                    </Typography>
+                  </CardContent>
+                </StatsCard>
+              </Grow>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* 🎯 NEW: Social Section */}
+        <Grid container spacing={4} sx={{ mb: 6 }}>
+          {/* Recent Followers */}
+          <Grid item xs={12} md={6}>
+            <Grow in={mounted} timeout={1400}>
+              <Paper 
+                elevation={0}
+                sx={{
+                  borderRadius: '24px',
+                  p: 4,
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+                  height: '100%'
+                }}
+              >
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+                  <Box display="flex" alignItems="center">
+                    <People sx={{ fontSize: '1.5rem', color: '#9c27b0', mr: 1.5 }} />
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1e293b' }}>
+                      Recent Followers
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6" sx={{ color: '#9c27b0', fontWeight: 700 }}>
+                    {dashboardData?.stats?.followersCount || 0}
                   </Typography>
                 </Box>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box display="flex" flexDirection="column" gap={2}>
-                <ActionButton
-                  variant="primary"
-                  startIcon={<Create />}
-                  endIcon={<ArrowForward />}
-                  onClick={() => navigate('/create-story')}
-                  fullWidth
-                >
-                  Share Your Story
-                </ActionButton>
-                <ActionButton
-                  variant="outlined"
-                  startIcon={<Explore />}
-                  onClick={() => navigate('/browse')}
-                  fullWidth
-                >
-                  Explore Stories
-                </ActionButton>
-              </Box>
-            </Grid>
-          </Grid>
-        </WelcomeSection>
-      </Fade>
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {statsData.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Grow in={mounted} timeout={1200 + index * 200}>
-              <StatsCard color={stat.color}>
-                <CardContent sx={{ p: 3, textAlign: 'center' }}>
-                  <IconContainer 
-                    className="icon-container"
-                    color={stat.color}
-                    sx={{ mx: 'auto' }}
-                  >
-                    {React.cloneElement(stat.icon, { 
-                      sx: { fontSize: 40, color: stat.color } 
-                    })}
-                  </IconContainer>
-                  
-                  <Typography 
-                    variant="h3" 
-                    sx={{ 
-                      fontWeight: 900, 
-                      color: '#1e293b', 
-                      mb: 1,
-                      fontSize: { xs: '2rem', md: '2.5rem' }
-                    }}
-                  >
-                    {stat.value}
-                  </Typography>
-                  
-                  <Typography 
-                    variant="h6" 
-                    sx={{ 
-                      fontWeight: 700, 
-                      color: stat.color,
-                      mb: 1,
-                      fontSize: '1.1rem'
-                    }}
-                  >
-                    {stat.title}
-                  </Typography>
-                  
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: '#64748b',
-                      fontSize: '0.9rem'
-                    }}
-                  >
-                    {stat.description}
-                  </Typography>
-                </CardContent>
-              </StatsCard>
+                {dashboardData?.recentFollowers?.length > 0 ? (
+                  <>
+                    <AvatarGroup max={4} sx={{ mb: 2, justifyContent: 'flex-start' }}>
+                      {dashboardData.recentFollowers.slice(0, 4).map((follower, index) => (
+                        <Avatar
+                          key={follower.id || index}
+                          sx={{ 
+                            width: 40, 
+                            height: 40,
+                            background: 'linear-gradient(135deg, #9c27b0, #e1bee7)',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => navigate(`/profile/${follower.username}`)}
+                        >
+                          {follower.name?.charAt(0) || 'U'}
+                        </Avatar>
+                      ))}
+                    </AvatarGroup>
+                    <List sx={{ p: 0, maxHeight: 200, overflow: 'auto' }}>
+                      {dashboardData.recentFollowers.slice(0, 3).map((follower, index) => (
+                        <ListItem 
+                          key={follower.id || index} 
+                          sx={{ 
+                            p: 1, 
+                            borderRadius: 2, 
+                            background: 'rgba(156, 39, 176, 0.05)',
+                            mb: 1,
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => navigate(`/profile/${follower.username}`)}
+                        >
+                          <ListItemAvatar>
+                            <Avatar sx={{ width: 32, height: 32, background: '#9c27b0' }}>
+                              {follower.name?.charAt(0) || 'U'}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {follower.name || 'Anonymous'}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="text.secondary">
+                                @{follower.username} • {follower.stats?.storiesCount || 0} stories
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </>
+                ) : (
+                  <Box textAlign="center" py={4}>
+                    <PersonAdd sx={{ fontSize: '2rem', color: '#9c27b0', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      No followers yet. Share more stories to grow your community!
+                    </Typography>
+                  </Box>
+                )}
+
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(`/profile/${user?.username || user?.name}/followers`)}
+                  fullWidth
+                  sx={{ 
+                    mt: 2,
+                    borderColor: '#9c27b0',
+                    color: '#9c27b0',
+                    '&:hover': { borderColor: '#7b1fa2', backgroundColor: 'rgba(156, 39, 176, 0.1)' }
+                  }}
+                >
+                  View All Followers
+                </Button>
+              </Paper>
             </Grow>
           </Grid>
-        ))}
-      </Grid>
 
-      <Grid container spacing={4}>
-        {/* Progress Section */}
-        <Grid item xs={12} md={8}>
-          <Grow in={mounted} timeout={1600}>
-            <Paper 
-              elevation={0}
-              sx={{
-                borderRadius: '20px',
-                p: 4,
-                background: '#ffffff',
-                border: '1px solid rgba(0, 0, 0, 0.06)',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
-              }}
-            >
-              <Typography 
-                variant="h4" 
-                sx={{ 
-                  fontWeight: 800, 
-                  color: '#1e293b', 
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2
+          {/* Recent Following */}
+          <Grid item xs={12} md={6}>
+            <Grow in={mounted} timeout={1500}>
+              <Paper 
+                elevation={0}
+                sx={{
+                  borderRadius: '24px',
+                  p: 4,
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+                  height: '100%'
                 }}
               >
-                <Timeline sx={{ fontSize: '2rem', color: '#1976d2' }} />
-                Your Growth Journey
-              </Typography>
-
-              <ProgressSection>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                  Community Impact Level
-                </Typography>
-                <Box display="flex" alignItems="center" gap={2} mb={2}>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={75} 
-                    sx={{ 
-                      flexGrow: 1, 
-                      height: 12, 
-                      borderRadius: 6,
-                      background: 'rgba(25, 118, 210, 0.1)',
-                      '& .MuiLinearProgress-bar': {
-                        background: 'linear-gradient(90deg, #81c784, #90caf9)',
-                        borderRadius: 6,
-                      }
-                    }} 
-                  />
-                  <Chip 
-                    label="75%" 
-                    size="small"
-                    sx={{ 
-                      background: 'linear-gradient(135deg, #81c784, #90caf9)',
-                      color: 'white',
-                      fontWeight: 700
-                    }}
-                  />
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+                  <Box display="flex" alignItems="center">
+                    <Star sx={{ fontSize: '1.5rem', color: '#ff9800', mr: 1.5 }} />
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1e293b' }}>
+                      Following
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 700 }}>
+                    {dashboardData?.stats?.followingCount || 0}
+                  </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary">
-                  You're 25% away from reaching "Community Hero" status! 
-                  Share 2 more stories to unlock exclusive features.
-                </Typography>
-              </ProgressSection>
 
-              {/* Quick Actions */}
-              <Box sx={{ mt: 4 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                  Quick Actions
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <ActionButton
-                      variant="outlined"
-                      startIcon={<AddCircle />}
-                      onClick={() => navigate('/create-story')}
-                      fullWidth
-                    >
-                      New Story
-                    </ActionButton>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <ActionButton
-                      variant="outlined"
-                      startIcon={<Psychology />}
-                      onClick={() => navigate('/community')}
-                      fullWidth
-                    >
-                      Join Discussion
-                    </ActionButton>
-                  </Grid>
-                </Grid>
-              </Box>
-            </Paper>
-          </Grow>
+                {dashboardData?.recentFollowing?.length > 0 ? (
+                  <>
+                    <AvatarGroup max={4} sx={{ mb: 2, justifyContent: 'flex-start' }}>
+                      {dashboardData.recentFollowing.slice(0, 4).map((following, index) => (
+                        <Avatar
+                          key={following.id || index}
+                          sx={{ 
+                            width: 40, 
+                            height: 40,
+                            background: 'linear-gradient(135deg, #ff9800, #ffcc02)',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => navigate(`/profile/${following.username}`)}
+                        >
+                          {following.name?.charAt(0) || 'U'}
+                        </Avatar>
+                      ))}
+                    </AvatarGroup>
+                    <List sx={{ p: 0, maxHeight: 200, overflow: 'auto' }}>
+                      {dashboardData.recentFollowing.slice(0, 3).map((following, index) => (
+                        <ListItem 
+                          key={following.id || index} 
+                          sx={{ 
+                            p: 1, 
+                            borderRadius: 2, 
+                            background: 'rgba(255, 152, 0, 0.05)',
+                            mb: 1,
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => navigate(`/profile/${following.username}`)}
+                        >
+                          <ListItemAvatar>
+                            <Avatar sx={{ width: 32, height: 32, background: '#ff9800' }}>
+                              {following.name?.charAt(0) || 'U'}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {following.name || 'Anonymous'}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="text.secondary">
+                                @{following.username} • {following.stats?.storiesCount || 0} stories
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </>
+                ) : (
+                  <Box textAlign="center" py={4}>
+                    <Explore sx={{ fontSize: '2rem', color: '#ff9800', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Not following anyone yet. Discover inspiring creators!
+                    </Typography>
+                  </Box>
+                )}
+
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(`/profile/${user?.username || user?.name}/following`)}
+                  fullWidth
+                  sx={{ 
+                    mt: 2,
+                    borderColor: '#ff9800',
+                    color: '#ff9800',
+                    '&:hover': { borderColor: '#f57c00', backgroundColor: 'rgba(255, 152, 0, 0.1)' }
+                  }}
+                >
+                  View All Following
+                </Button>
+              </Paper>
+            </Grow>
+          </Grid>
         </Grid>
 
-        {/* Recent Activity */}
-        <Grid item xs={12} md={4}>
-          <Grow in={mounted} timeout={1800}>
-            <Paper 
-              elevation={0}
-              sx={{
-                borderRadius: '20px',
-                p: 3,
-                background: '#ffffff',
-                border: '1px solid rgba(0, 0, 0, 0.06)',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
-                height: 'fit-content'
-              }}
-            >
-              <Typography 
-                variant="h5" 
-                sx={{ 
-                  fontWeight: 800, 
-                  color: '#1e293b', 
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5
-                }}
-              >
-                <LocalFireDepartment sx={{ fontSize: '1.8rem', color: '#ff9800' }} />
-                Recent Activity
+        {/* Recent Stories */}
+        <Grow in={mounted} timeout={1600}>
+          <Paper 
+            elevation={0}
+            sx={{
+              borderRadius: '24px',
+              p: 4,
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            <Box display="flex" alignItems="center" mb={3}>
+              <LocalFireDepartment sx={{ fontSize: '1.5rem', color: '#ff9800', mr: 1.5 }} />
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#1e293b' }}>
+                Recent Stories
               </Typography>
+            </Box>
 
+            {dashboardData?.recentStories?.length > 0 ? (
               <List sx={{ p: 0 }}>
-                {recentActivity.map((activity, index) => (
-                  <Fade in={mounted} timeout={2000 + index * 200} key={activity.id}>
-                    <ActivityCard elevation={0}>
-                      <ListItem sx={{ p: 2 }}>
-                        <ListItemAvatar>
-                          <Avatar sx={{ 
-                            background: `${activity.color}15`,
-                            color: activity.color,
-                            width: 48,
-                            height: 48
-                          }}>
-                            {activity.icon}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={
-                            <Typography 
-                              variant="body1" 
-                              sx={{ 
-                                fontWeight: 600,
-                                color: '#1e293b',
-                                lineHeight: 1.4
-                              }}
-                            >
-                              {activity.title}
-                            </Typography>
-                          }
-                          secondary={
-                            <Typography 
-                              variant="body2" 
-                              sx={{ 
-                                color: '#64748b',
-                                mt: 0.5
-                              }}
-                            >
-                              {activity.time}
-                            </Typography>
-                          }
-                        />
-                      </ListItem>
-                    </ActivityCard>
-                  </Fade>
+                {dashboardData.recentStories.slice(0, 3).map((story, index) => (
+                  <ListItem key={story.id || index} sx={{ p: 2, mb: 1, borderRadius: 2, background: 'rgba(255,255,255,0.5)' }}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ 
+                        background: story.status === 'published' 
+                          ? 'linear-gradient(135deg, #4caf50, #81c784)'
+                          : 'linear-gradient(135deg, #ff9800, #ffb74d)',
+                        width: 48,
+                        height: 48
+                      }}>
+                        {story.status === 'published' ? <Visibility /> : <Create />}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                          {story.title}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box>
+                          <Box display="flex" alignItems="center" gap={2} mb={0.5}>
+                            <Box display="flex" alignItems="center">
+                              <Visibility sx={{ fontSize: 16, color: '#81c784', mr: 0.5 }} />
+                              <Typography variant="caption">{story.views}</Typography>
+                            </Box>
+                            <Box display="flex" alignItems="center">
+                              <Favorite sx={{ fontSize: 16, color: '#e91e63', mr: 0.5 }} />
+                              <Typography variant="caption">{story.likes}</Typography>
+                            </Box>
+                            <Box display="flex" alignItems="center">
+                              <Comment sx={{ fontSize: 16, color: '#2196f3', mr: 0.5 }} />
+                              <Typography variant="caption">{story.comments || 0}</Typography>
+                            </Box>
+                          </Box>
+                          <Chip
+                            label={story.status}
+                            size="small"
+                            sx={{ 
+                              mt: 1,
+                              background: story.status === 'published' ? '#4caf5015' : '#ff980015',
+                              color: story.status === 'published' ? '#4caf50' : '#ff9800',
+                              fontSize: '0.7rem'
+                            }}
+                          />
+                        </Box>
+                      }
+                    />
+                  </ListItem>
                 ))}
               </List>
+            ) : (
+              <Box textAlign="center" py={4}>
+                <Create sx={{ fontSize: '2rem', color: '#81c784', mb: 2 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                  No stories yet
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Share your first story to get started!
+                </Typography>
+              </Box>
+            )}
 
-              <ActionButton
-                variant="outlined"
-                onClick={() => navigate('/activity')}
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                View All Activity
-              </ActionButton>
-            </Paper>
-          </Grow>
-        </Grid>
-      </Grid>
-
-      {/* Inspiration Section */}
-      <Grow in={mounted} timeout={2000}>
-        <Paper 
-          elevation={0}
-          sx={{
-            borderRadius: '20px',
-            p: 4,
-            mt: 4,
-            background: 'linear-gradient(135deg, rgba(129, 199, 132, 0.05) 0%, rgba(144, 202, 249, 0.05) 100%)',
-            border: '1px solid rgba(129, 199, 132, 0.15)',
-            textAlign: 'center'
-          }}
-        >
-          <Celebration sx={{ 
-            fontSize: '4rem', 
-            color: '#81c784', 
-            mb: 2,
-            animation: `${float} 3s ease-in-out infinite`
-          }} />
-          <Typography 
-            variant="h4" 
-            sx={{ 
-              fontWeight: 800, 
-              color: '#1e293b', 
-              mb: 2 
-            }}
-          >
-            You're Making a Difference! 🎉
-          </Typography>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              color: '#64748b', 
-              mb: 3,
-              maxWidth: 600,
-              mx: 'auto'
-            }}
-          >
-            Your stories have inspired others to overcome their challenges. 
-            Every failure shared is a lesson learned by the community.
-          </Typography>
-          <ActionButton
-            variant="primary"
-            size="large"
-            startIcon={<Star />}
-            onClick={() => navigate('/impact')}
-          >
-            See Your Impact
-          </ActionButton>
-        </Paper>
-      </Grow>
-    </Container>
+            <ActionButton
+              variant="outlined"
+              onClick={() => navigate('/browse')}
+              fullWidth
+              sx={{ mt: 3 }}
+            >
+              View All Stories
+            </ActionButton>
+          </Paper>
+        </Grow>
+      </Container>
+    </BackgroundContainer>
   );
 }
 

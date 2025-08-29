@@ -55,7 +55,9 @@ import {
   Palette,
   RocketLaunch,
   School,
-  Category
+  Category,
+  AccessTime,
+  TrendingUp
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -244,6 +246,24 @@ const ProgressCard = styled(Paper)(({ theme }) => ({
   top: 100
 }));
 
+const RequiredSelect = styled(FormControl)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 16,
+    background: 'rgba(255,255,255,.8)',
+    backdropFilter: 'blur(8px)',
+    '&:hover': {
+      background: 'rgba(255,255,255,.9)',
+    },
+    '&.Mui-focused': {
+      background: 'rgba(255,255,255,.95)',
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#81c784',
+      }
+    }
+  }
+}));
+
 /* ───────────────────────────
    MAIN COMPONENT
 ─────────────────────────── */
@@ -254,10 +274,9 @@ function CreateStory() {
     category: '',
     tags: [],
     metadata: {
-      failureType: '',
       recoveryTime: '',
-      keyLessons: [''],
-      currentStatus: ''
+      currentStatus: '',
+      keyLessons: ['']
     }
   });
   const [newTag, setNewTag] = useState('');
@@ -286,13 +305,22 @@ function CreateStory() {
     { value: 'creative',      label: 'Creative Arts',        icon: Palette,       color: '#ffb74d' }
   ];
 
-  const failureTypes = [
-    'startup', 'career', 'relationship', 'health',
-    'education', 'financial', 'creative', 'other'
+  /* 🎯 UPDATED: Recovery time options */
+  const recoveryTimeOptions = [
+    '1 month',
+    '3 months',
+    '6 months',
+    '1 year',
+    '2 years',
+    '3+ years'
   ];
 
+  /* 🎯 UPDATED: Current status options */
   const currentStatusOptions = [
-    'recovering', 'recovered', 'thriving', 'helping_others'
+    'recovering',
+    'recovered', 
+    'thriving',
+    'helping_others'
   ];
 
   /* helpers -------------------------------------------------------------- */
@@ -301,9 +329,11 @@ function CreateStory() {
       storyData.title.length >= 10,
       storyData.content.length >= 100,
       !!storyData.category,
-      storyData.tags.length > 0
+      storyData.tags.length > 0,
+      !!storyData.metadata.recoveryTime,      // 🎯 NEW: Required field
+      !!storyData.metadata.currentStatus      // 🎯 NEW: Required field
     ];
-    setProgress((parts.filter(Boolean).length / 4) * 100);
+    setProgress((parts.filter(Boolean).length / 6) * 100); // 🎯 UPDATED: Now 6 requirements
   };
 
   const updateWordCount = () => {
@@ -351,17 +381,19 @@ function CreateStory() {
   const removeKeyLesson = (idx) =>
     handleMetadataChange('keyLessons', storyData.metadata.keyLessons.filter((_, i) => i !== idx));
 
-  /* validation ----------------------------------------------------------- */
+  /* 🎯 UPDATED: validation with required fields */
   const validateForm = () => {
     if (storyData.title.length < 10)  { warn('Title needs at least 10 characters');  return false; }
     if (storyData.content.length < 100){ warn('Story needs at least 100 characters'); return false; }
     if (!storyData.category)           { warn('Please select a category');           return false; }
+    if (!storyData.metadata.recoveryTime)    { warn('Recovery time is required');    return false; }
+    if (!storyData.metadata.currentStatus)   { warn('Current status is required');   return false; }
     return true;
 
     function warn(msg){ setSnackbar({open:true,message:msg,severity:'warning'}); }
   };
 
-  /* submit ---------------------------------------------------------------- */
+  /* 🎯 UPDATED: submit with required metadata + DASHBOARD REFRESH */
   const handleSubmit = async (asDraft = false) => {
     if (!validateForm() && !asDraft) return;
     setLoading(true);
@@ -370,15 +402,18 @@ function CreateStory() {
       const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
       if (!token) throw new Error('loginRequired');
 
-      /* clean metadata */
+      /* 🎯 UPDATED: clean metadata with required fields */
       const m = storyData.metadata;
       const cleanMeta = {};
-      if (m.failureType.trim())   cleanMeta.failureType   = m.failureType.trim();
-      if (m.recoveryTime.trim())  cleanMeta.recoveryTime  = m.recoveryTime.trim();
+      
+      // Required fields
+      cleanMeta.recoveryTime  = m.recoveryTime.trim();
+      cleanMeta.currentStatus = m.currentStatus.trim();
+      
+      // Optional fields
       const lessons = m.keyLessons.filter(l => l && l.trim());
-      if (lessons.length)         cleanMeta.keyLessons    = lessons;
-      if (m.currentStatus.trim()) cleanMeta.currentStatus = m.currentStatus.trim();
-      if (readTime)               cleanMeta.readTime      = readTime;
+      if (lessons.length) cleanMeta.keyLessons = lessons;
+      if (readTime) cleanMeta.readTime = readTime;
 
       const payload = {
         title   : storyData.title.trim(),
@@ -412,7 +447,14 @@ function CreateStory() {
       });
 
       resetForm();
-      setTimeout(() => navigate('/browse'), 2000);
+      
+      // 🎯 UPDATED: Navigate to dashboard with refresh state
+      setTimeout(() => {
+        navigate('/dashboard', { 
+          replace: true, 
+          state: { refresh: true } // This triggers dashboard data refresh
+        });
+      }, 2000);
 
     } catch (err) {
       console.error('save error →', err);
@@ -434,7 +476,7 @@ function CreateStory() {
 
   const resetForm = () => setStoryData({
     title:'', content:'', category:'', tags:[],
-    metadata:{ failureType:'', recoveryTime:'', keyLessons:[''], currentStatus:'' }
+    metadata:{ recoveryTime:'', currentStatus:'', keyLessons:[''] }
   });
 
   /* ───────────────────────────
@@ -686,60 +728,72 @@ Your authentic story can inspire and help others facing similar challenges.`}
                     </Typography>
                   </Box>
 
-                  {/* optional metadata */}
+                  {/* 🎯 UPDATED: Required Recovery Details */}
                   <Divider sx={{ mb:4 }} />
-                  <Typography variant="h6" sx={{ fontWeight:700, mb:3 }}>
-                    Optional Details
-                  </Typography>
+                  <Box display="flex" alignItems="center" mb={3}>
+                    <Avatar sx={{ width:50, height:50, background:'linear-gradient(135deg,#e91e63,#f06292)', mr:2 }}>
+                      <AccessTime />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h5" sx={{ fontWeight:700, mb:.5 }}>
+                        Recovery Details
+                        <Chip label="Required" size="small" color="error" sx={{ ml:2, fontWeight:600 }} />
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Help others understand your journey timeline and current progress
+                      </Typography>
+                    </Box>
+                  </Box>
 
                   <Grid container spacing={3} mb={6}>
                     <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth>
-                        <InputLabel>Failure Type</InputLabel>
+                      <RequiredSelect fullWidth>
+                        <InputLabel>Recovery Time *</InputLabel>
                         <Select
-                          value={storyData.metadata.failureType}
-                          onChange={(e)=>handleMetadataChange('failureType',e.target.value)}
-                          label="Failure Type"
-                          sx={{ borderRadius:2, background:'rgba(255,255,255,.8)' }}
+                          value={storyData.metadata.recoveryTime}
+                          onChange={(e)=>handleMetadataChange('recoveryTime',e.target.value)}
+                          label="Recovery Time *"
+                          required
                         >
-                          <MenuItem value=""><em>None</em></MenuItem>
-                          {failureTypes.map(t=>(
-                            <MenuItem key={t} value={t}>{t}</MenuItem>
+                          {recoveryTimeOptions.map(time=>(
+                            <MenuItem key={time} value={time}>
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <AccessTime sx={{ fontSize:18, color:'#81c784' }} />
+                                {time}
+                              </Box>
+                            </MenuItem>
                           ))}
                         </Select>
-                      </FormControl>
+                      </RequiredSelect>
                     </Grid>
 
                     <Grid item xs={12} sm={6}>
-                      <EnhancedTextField
-                        label="Recovery Time (e.g., 6 months)"
-                        value={storyData.metadata.recoveryTime}
-                        onChange={(e)=>handleMetadataChange('recoveryTime',e.target.value)}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth>
-                        <InputLabel>Current Status</InputLabel>
+                      <RequiredSelect fullWidth>
+                        <InputLabel>Current Status *</InputLabel>
                         <Select
                           value={storyData.metadata.currentStatus}
                           onChange={(e)=>handleMetadataChange('currentStatus',e.target.value)}
-                          label="Current Status"
-                          sx={{ borderRadius:2, background:'rgba(255,255,255,.8)' }}
+                          label="Current Status *"
+                          required
                         >
-                          <MenuItem value=""><em>None</em></MenuItem>
-                          {currentStatusOptions.map(s=>(
-                            <MenuItem key={s} value={s}>{s.replace('_',' ')}</MenuItem>
+                          {currentStatusOptions.map(status=>(
+                            <MenuItem key={status} value={status}>
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <TrendingUp sx={{ fontSize:18, color:'#81c784' }} />
+                                {status.replace('_',' ').toUpperCase()}
+                              </Box>
+                            </MenuItem>
                           ))}
                         </Select>
-                      </FormControl>
+                      </RequiredSelect>
                     </Grid>
                   </Grid>
 
-                  {/* key lessons */}
+                  {/* key lessons (optional) */}
+                  <Divider sx={{ mb:4 }} />
                   <Box mb={6}>
                     <Typography variant="h6" sx={{ fontWeight:700, mb:2 }}>
-                      Key Lessons (max 5)
+                      Key Lessons (Optional - Max 5)
                     </Typography>
                     {storyData.metadata.keyLessons.map((lesson, idx)=>(
                       <Box key={idx} display="flex" alignItems="center" gap={2} mb={2}>
@@ -767,28 +821,27 @@ Your authentic story can inspire and help others facing similar challenges.`}
                     <ElegantButton
                       variant="outlined"
                       startIcon={<Save />}
-                      onClick={()=>handleSubmit(true)}          /* draft */
+                      onClick={()=>handleSubmit(true)}
                       disabled={loading}
                     >
                       Save as Draft
                     </ElegantButton>
 
-<ElegantButton
-  variant="primary"
-  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <EmojiEvents />}
-  onClick={() => handleSubmit(false)}   // false ⇒ published
-  disabled={loading || progress < 75}
->
-  {loading ? 'Publishing...' : 'Publish Story'}
-</ElegantButton>
-
+                    <ElegantButton
+                      variant="primary"
+                      startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <EmojiEvents />}
+                      onClick={() => handleSubmit(false)}
+                      disabled={loading || progress < 85}
+                    >
+                      {loading ? 'Publishing...' : 'Publish Story'}
+                    </ElegantButton>
                   </Stack>
                 </CardContent>
               </ElegantCard>
             </Grow>
           </Grid>
 
-          {/* sidebar column */}
+          {/* 🎯 UPDATED: sidebar with new progress requirements */}
           <Grid item xs={12} lg={4}>
             <Grow in={mounted} timeout={1200}>
               <Box>
@@ -842,6 +895,14 @@ Your authentic story can inspire and help others facing similar challenges.`}
                       <CheckCircle sx={{ fontSize:20, mr:2, color:storyData.tags.length>0?'#81c784':'#e0e0e0' }} />
                       <Typography variant="body2" fontWeight="500">Tags added</Typography>
                     </Box>
+                    <Box display="flex" alignItems="center">
+                      <CheckCircle sx={{ fontSize:20, mr:2, color:storyData.metadata.recoveryTime?'#81c784':'#e0e0e0' }} />
+                      <Typography variant="body2" fontWeight="500">Recovery time selected *</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center">
+                      <CheckCircle sx={{ fontSize:20, mr:2, color:storyData.metadata.currentStatus?'#81c784':'#e0e0e0' }} />
+                      <Typography variant="body2" fontWeight="500">Current status selected *</Typography>
+                    </Box>
                   </Stack>
                 </ProgressCard>
 
@@ -861,6 +922,7 @@ Your authentic story can inspire and help others facing similar challenges.`}
                     <Typography variant="body2" color="text.secondary">• Share your emotions and feelings</Typography>
                     <Typography variant="body2" color="text.secondary">• Describe your journey to overcome it</Typography>
                     <Typography variant="body2" color="text.secondary">• Share the lessons you learned</Typography>
+                    <Typography variant="body2" color="text.secondary">• Include your recovery timeline</Typography>
                     <Typography variant="body2" color="text.secondary">• End with hope and encouragement</Typography>
                   </Stack>
                 </ProgressCard>
@@ -899,6 +961,28 @@ Your authentic story can inspire and help others facing similar challenges.`}
               {storyData.title || 'Your Story Title'}
             </Typography>
 
+            {/* 🎯 NEW: Show recovery details in preview */}
+            {(storyData.metadata.recoveryTime || storyData.metadata.currentStatus) && (
+              <Box sx={{ mb:3, p:2, background:'rgba(129,199,132,.1)', borderRadius:2 }}>
+                {storyData.metadata.recoveryTime && (
+                  <Chip
+                    icon={<AccessTime />}
+                    label={`Recovery: ${storyData.metadata.recoveryTime}`}
+                    size="small"
+                    sx={{ mr:1, mb:1 }}
+                  />
+                )}
+                {storyData.metadata.currentStatus && (
+                  <Chip
+                    icon={<TrendingUp />}
+                    label={`Status: ${storyData.metadata.currentStatus.replace('_',' ')}`}
+                    size="small"
+                    sx={{ mr:1, mb:1 }}
+                  />
+                )}
+              </Box>
+            )}
+
             <Typography variant="body1" sx={{ whiteSpace:'pre-line', lineHeight:1.7, mb:3 }}>
               {storyData.content || 'Your story content will appear here...'}
             </Typography>
@@ -923,7 +1007,7 @@ Your authentic story can inspire and help others facing similar challenges.`}
               variant="primary"
               startIcon={<RocketLaunch />}
               onClick={()=>{ setShowPreview(false); handleSubmit(false);} }
-              disabled={loading || progress<75}
+              disabled={loading || progress<85}
             >
               Publish Story
             </ElegantButton>

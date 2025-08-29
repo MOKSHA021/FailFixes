@@ -1,70 +1,66 @@
 /* eslint-disable no-console */
 import React, { useState, useEffect } from 'react';
 import {
-  Container, Typography, Box, Avatar, Paper, Chip, IconButton,
-  Button, Fade, Grow, CircularProgress, Alert, Divider, Stack
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Avatar,
+  Chip,
+  Button,
+  IconButton,
+  CircularProgress,
+  Alert,
+  Divider,
+  Stack,
+  Card,
+  CardContent,
+  TextField,
+  Collapse,
+  Fade,
+  Grow,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
-  ArrowBack, Share, Bookmark, Favorite, Visibility, AccessTime,
-  Person, Business, Psychology, School, FitnessCenter, FamilyRestroom,
-  Computer, Palette, AutoFixHigh, FavoriteOutlined, BookmarkBorder, Comment
+  ArrowBack,
+  Share,
+  Favorite,
+  FavoriteOutlined,
+  Comment,
+  Visibility,
+  AccessTime,
+  TrendingUp,
+  Person,
+  Category as CategoryIcon,
+  Send,
+  ExpandMore,
+  ExpandLess,
+  CheckCircle,
+  School,
+  Business,
+  Psychology,
+  FitnessCenter,
+  Computer,
+  Palette,
+  FamilyRestroom
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
-import { useNavigate, useParams } from 'react-router-dom';
-import LikeButton from '../components/LikeButton';
-import Comments from '../components/Comments';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-// 🎨 **ELEGANT ANIMATIONS - Matching Home Style**
+// Animation keyframes
 const gentleFloat = keyframes`
-  0%, 100% { 
-    transform: translateY(0px) rotate(0deg); 
-  }
-  50% { 
-    transform: translateY(-8px) rotate(1deg); 
-  }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
 `;
 
 const softGlow = keyframes`
-  0%, 100% { 
-    box-shadow: 0 0 15px rgba(129, 199, 132, 0.2), 0 0 30px rgba(129, 199, 132, 0.1); 
-  }
-  50% { 
-    box-shadow: 0 0 25px rgba(129, 199, 132, 0.3), 0 0 40px rgba(129, 199, 132, 0.15); 
-  }
+  0%, 100% { box-shadow: 0 0 15px rgba(129, 199, 132, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(129, 199, 132, 0.3); }
 `;
 
-const subtleShimmer = keyframes`
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: 200px 0;
-  }
-`;
-
-const softParticle = keyframes`
-  0%, 100% { 
-    transform: translateY(0px) translateX(0px); 
-    opacity: 0.2; 
-  }
-  50% { 
-    transform: translateY(-15px) translateX(8px); 
-    opacity: 0.4; 
-  }
-`;
-
-const fadeIn = keyframes`
-  0% { 
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
-
-// 🏗️ **ELEGANT STYLED COMPONENTS - Matching Home Style**
+// Styled Components
 const BackgroundContainer = styled(Box)(({ theme }) => ({
   minHeight: '100vh',
   background: `
@@ -79,51 +75,22 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
       #f5f8ff 100%
     )
   `,
-  position: 'relative',
-  overflow: 'hidden',
   paddingTop: theme.spacing(4),
   paddingBottom: theme.spacing(8),
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: `
-      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e8f5e8' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
-    `,
-    pointerEvents: 'none',
-  },
-}));
-
-const FloatingParticle = styled(Box)(({ delay, size, left, top }) => ({
-  position: 'absolute',
-  left: `${left}%`,
-  top: `${top}%`,
-  width: `${size}px`,
-  height: `${size}px`,
-  borderRadius: '50%',
-  background: 'linear-gradient(135deg, rgba(174, 213, 129, 0.2), rgba(179, 229, 252, 0.15))',
-  animation: `${softParticle} ${4 + Math.random() * 3}s ease-in-out infinite`,
-  animationDelay: `${delay}s`,
-  backdropFilter: 'blur(1px)',
-  border: '1px solid rgba(174, 213, 129, 0.1)'
 }));
 
 const StoryCard = styled(Paper)(({ theme }) => ({
   background: `
     linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.85) 0%,
-      rgba(255, 255, 255, 0.75) 50%,
-      rgba(255, 255, 255, 0.65) 100%
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.8) 100%
     )
   `,
   backdropFilter: 'blur(20px) saturate(120%)',
   WebkitBackdropFilter: 'blur(20px) saturate(120%)',
   border: '1px solid rgba(255, 255, 255, 0.3)',
   borderRadius: '24px',
-  padding: theme.spacing(8, 6),
+  padding: theme.spacing(6),
   marginBottom: theme.spacing(4),
   position: 'relative',
   overflow: 'hidden',
@@ -136,569 +103,627 @@ const StoryCard = styled(Paper)(({ theme }) => ({
     content: '""',
     position: 'absolute',
     top: 0,
-    left: '-100%',
-    width: '100%',
-    height: '100%',
-    background: `
-      linear-gradient(90deg, 
-        transparent, 
-        rgba(129, 199, 132, 0.1), 
-        transparent
-      )
-    `,
-    animation: `${subtleShimmer} 6s ease-in-out infinite`,
-  },
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    height: '3px',
+    height: '4px',
     background: 'linear-gradient(90deg, #81c784, #aed581, #90caf9, #f8bbd9)',
     borderRadius: '24px 24px 0 0',
   }
 }));
 
-const AuthorCard = styled(Paper)(({ theme }) => ({
-  background: `
-    linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.9) 0%,
-      rgba(255, 255, 255, 0.8) 100%
-    )
-  `,
-  backdropFilter: 'blur(15px) saturate(120%)',
-  WebkitBackdropFilter: 'blur(15px) saturate(120%)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
-  borderRadius: '20px',
-  padding: theme.spacing(4),
-  boxShadow: `
-    0 6px 20px rgba(0, 0, 0, 0.08),
-    0 4px 16px rgba(0, 0, 0, 0.04)
-  `,
-}));
-
-const ElegantButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
-  borderRadius: '16px',
-  padding: '12px 28px',
-  fontSize: '0.95rem',
+const ActionButton = styled(Button)(({ variant: buttonVariant, selected }) => ({
+  borderRadius: 16,
+  padding: '12px 24px',
   fontWeight: 600,
   textTransform: 'none',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  ...(buttonVariant === 'primary' && {
-    background: 'linear-gradient(135deg, #81c784 0%, #aed581 50%, #90caf9 100%)',
-    backgroundSize: '150% 150%',
-    color: 'white',
-    boxShadow: '0 4px 15px rgba(129, 199, 132, 0.3)',
-    '&:hover': {
-      backgroundPosition: 'right center',
-      transform: 'translateY(-2px) scale(1.01)',
-      boxShadow: '0 8px 25px rgba(129, 199, 132, 0.4)'
-    }
-  }),
-  ...(buttonVariant === 'outlined' && {
-    border: '2px solid #81c784',
-    background: 'rgba(255, 255, 255, 0.1)',
-    backdropFilter: 'blur(8px)',
-    color: '#81c784',
-    '&:hover': {
-      background: 'linear-gradient(135deg, rgba(129, 199, 132, 0.1), rgba(144, 202, 249, 0.1))',
-      transform: 'translateY(-1px) scale(1.01)',
-      boxShadow: '0 6px 20px rgba(129, 199, 132, 0.2)',
-      borderWidth: '2px',
-    }
-  }),
-}));
-
-const ActionButton = styled(IconButton)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(8px)',
-  border: '1px solid rgba(129, 199, 132, 0.3)',
   transition: 'all 0.3s ease',
-  '&:hover': {
-    background: 'linear-gradient(135deg, rgba(129, 199, 132, 0.1), rgba(144, 202, 249, 0.1))',
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 16px rgba(129, 199, 132, 0.3)'
-  }
-}));
-
-const StoryContent = styled(Box)(({ theme }) => ({
-  '& p': {
-    marginBottom: theme.spacing(3),
-    lineHeight: 1.8,
-    fontSize: '1.125rem',
-    color: '#374151',
-    fontWeight: 400,
-    animation: `${fadeIn} 0.6s ease-out`,
-  },
-  '& p:first-of-type': {
-    fontSize: '1.2rem',
-    fontWeight: 500,
-    color: '#1f2937',
-    '&::first-letter': {
-      fontSize: '3.5rem',
-      fontWeight: 800,
-      float: 'left',
-      lineHeight: '3rem',
-      paddingRight: '8px',
-      marginTop: '4px',
-      background: 'linear-gradient(135deg, #81c784, #aed581)',
-      backgroundClip: 'text',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
+  ...(buttonVariant === 'like' && {
+    background: selected 
+      ? 'linear-gradient(135deg, #e91e63, #f06292)' 
+      : 'rgba(255, 255, 255, 0.8)',
+    color: selected ? '#fff' : '#e91e63',
+    border: `2px solid ${selected ? '#e91e63' : 'rgba(233, 30, 99, 0.3)'}`,
+    '&:hover': {
+      background: selected 
+        ? 'linear-gradient(135deg, #d81b60, #e91e63)'
+        : 'linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(233, 30, 99, 0.05))',
+      transform: 'translateY(-2px) scale(1.05)',
     }
-  },
-  '& strong, & b': {
-    fontWeight: 700,
-    color: '#2e7d32',
-  },
-  '& em, & i': {
-    fontStyle: 'italic',
-    color: '#4a5568',
-  },
+  }),
+  ...(buttonVariant === 'comment' && {
+    background: 'rgba(33, 150, 243, 0.1)',
+    color: '#2196f3',
+    border: '2px solid rgba(33, 150, 243, 0.3)',
+    '&:hover': {
+      background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1))',
+      transform: 'translateY(-2px) scale(1.05)',
+    }
+  })
 }));
 
-const InteractionBar = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: theme.spacing(2),
+const MetadataChip = styled(Chip)(({ theme, variant: chipVariant }) => ({
+  borderRadius: 16,
+  padding: '12px 16px',
+  fontSize: '0.9rem',
+  fontWeight: 600,
+  height: 'auto',
+  ...(chipVariant === 'recovery' && {
+    background: 'linear-gradient(135deg, #81c784, #aed581)',
+    color: '#fff',
+    '& .MuiSvgIcon-root': { color: '#fff' }
+  }),
+  ...(chipVariant === 'status' && {
+    background: 'linear-gradient(135deg, #2196f3, #64b5f6)',
+    color: '#fff',
+    '& .MuiSvgIcon-root': { color: '#fff' }
+  })
+}));
+
+const CommentCard = styled(Paper)(({ theme }) => ({
+  background: 'rgba(255, 255, 255, 0.7)',
+  backdropFilter: 'blur(10px)',
+  borderRadius: 16,
   padding: theme.spacing(3),
-  background: 'rgba(129, 199, 132, 0.05)',
-  borderRadius: '16px',
-  border: '1px solid rgba(129, 199, 132, 0.1)',
-  marginTop: theme.spacing(4),
-  marginBottom: theme.spacing(4),
-}));
-
-const StatsItem = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: theme.spacing(1),
-  padding: theme.spacing(1, 2),
-  borderRadius: 12,
-  background: 'rgba(255, 255, 255, 0.6)',
-  border: '1px solid rgba(129, 199, 132, 0.2)'
+  marginBottom: theme.spacing(2),
+  border: '1px solid rgba(255, 255, 255, 0.3)',
 }));
 
 function ViewStory() {
   const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
-  const navigate = useNavigate();
+
   const { id } = useParams();
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { user, isAuthenticated } = useAuth(); // 🎯 GET USER CONTEXT
 
-  const categoryIcons = {
-    business: Business,
-    personal: Psychology,
-    education: School,
-    health: FitnessCenter,
-    relationships: FamilyRestroom,
-    career: Business,
-    technology: Computer,
-    creative: Palette
+  const categories = [
+    { value: 'business', label: 'Business & Startup', icon: Business, color: '#81c784' },
+    { value: 'personal', label: 'Personal Growth', icon: Psychology, color: '#90caf9' },
+    { value: 'education', label: 'Education & Learning', icon: School, color: '#ffb74d' },
+    { value: 'health', label: 'Health & Wellness', icon: FitnessCenter, color: '#f8bbd9' },
+    { value: 'relationships', label: 'Relationships', icon: FamilyRestroom, color: '#b39ddb' },
+    { value: 'career', label: 'Career & Work', icon: Business, color: '#81c784' },
+    { value: 'technology', label: 'Technology', icon: Computer, color: '#90caf9' },
+    { value: 'creative', label: 'Creative Arts', icon: Palette, color: '#ffb74d' }
+  ];
+
+  // 🎯 FIXED: Get category info function
+  const getCategoryInfo = (categoryValue) => {
+    return categories.find(cat => cat.value === categoryValue) || 
+           { label: categoryValue, icon: CategoryIcon, color: '#81c784' };
   };
 
-  const categoryColors = {
-    business: '#81c784',
-    personal: '#90caf9',
-    education: '#ffb74d',
-    health: '#f8bbd9',
-    relationships: '#b39ddb',
-    career: '#ff8a65',
-    technology: '#81c784',
-    creative: '#90caf9'
-  };
-
+  // Fetch story data
   useEffect(() => {
+    const fetchStory = async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const response = await fetch(`http://localhost:5000/api/stories/${id}`, { headers });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to load story');
+        }
+
+        setStory(data.story);
+        console.log('📖 Story loaded:', data.story);
+      } catch (err) {
+        console.error('❌ Error loading story:', err);
+        setError(err.message || 'Failed to load story');
+      } finally {
+        setLoading(false);
+        setMounted(true);
+      }
+    };
+
     fetchStory();
-    setMounted(true);
   }, [id]);
 
-  const fetchStory = async () => {
+  // 🎯 FIXED: Handle like toggle - ALLOW ALL USERS TO LIKE
+  const handleLike = async () => {
+    if (likeLoading) return;
+
+    // Require authentication to like
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
     try {
-      setLoading(true);
-      setError('');
+      setLikeLoading(true);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` })
-      };
+      const response = await fetch(`http://localhost:5000/api/stories/${id}/like`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      const response = await fetch(`http://localhost:5000/api/stories/${id}`, { headers });
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch story');
+      if (response.ok) {
+        setStory(prev => ({
+          ...prev,
+          stats: { ...prev.stats, likes: data.likesCount },
+          isLiked: data.isLiked
+        }));
+        console.log('✅ Like updated:', data.isLiked, data.likesCount);
+      } else {
+        throw new Error(data.message);
       }
-
-      setStory(data.story);
-    } catch (err) {
-      console.error('Error fetching story:', err);
-      setError(err.message);
+    } catch (error) {
+      console.error('❌ Like error:', error);
+      alert('Error updating like. Please try again.');
     } finally {
-      setLoading(false);
+      setLikeLoading(false);
     }
   };
 
-  const formatContent = (content) => {
-    if (!content) return '';
-    
-    return content
-      .split('\n\n')
-      .filter(para => para.trim())
-      .map(para => para.trim())
-      .join('\n\n');
-  };
+  // 🎯 FIXED: Handle comment submission - ALLOW ALL USERS TO COMMENT
+  const handleComment = async () => {
+    if (!commentText.trim() || commentLoading) return;
 
-  const handleLikeChange = (isLiked, likesCount) => {
-    setStory(prev => ({
-      ...prev,
-      isLiked,
-      stats: { ...prev.stats, likes: likesCount }
-    }));
-  };
+    // Require authentication to comment
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
 
-  const CategoryIcon = story?.category ? categoryIcons[story.category] : Business;
-  const categoryColor = story?.category ? categoryColors[story.category] : '#81c784';
+    const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setCommentLoading(true);
+
+      const response = await fetch(`http://localhost:5000/api/stories/${id}/comment`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: commentText })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStory(prev => ({
+          ...prev,
+          comments: [...(prev.comments || []), data.comment],
+          stats: { ...prev.stats, comments: data.commentsCount }
+        }));
+        setCommentText('');
+        console.log('✅ Comment added:', data.comment);
+      } else {
+        throw new Error(data.message || 'Error adding comment');
+      }
+    } catch (error) {
+      console.error('❌ Comment error:', error);
+      alert('Error adding comment. Please try again.');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
 
   if (loading) {
     return (
       <BackgroundContainer>
-        <Container maxWidth="md" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={60} sx={{ color: '#81c784' }} />
+        <Container maxWidth="md" sx={{ py: 8 }}>
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+            <CircularProgress size={60} sx={{ color: '#81c784' }} />
+          </Box>
         </Container>
       </BackgroundContainer>
     );
   }
 
-  if (error || !story) {
+  if (error) {
     return (
       <BackgroundContainer>
         <Container maxWidth="md" sx={{ py: 8 }}>
-          <Alert severity="error" sx={{ borderRadius: 3 }}>
-            {error || 'Story not found'}
+          <Alert severity="error" sx={{ borderRadius: 3, mb: 4 }}>
+            {error}
           </Alert>
-          <Box sx={{ mt: 4, textAlign: 'center' }}>
-            <ElegantButton variant="outlined" onClick={() => navigate('/browse')}>
-              Back to Browse
-            </ElegantButton>
-          </Box>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/browse')}
+            sx={{ borderRadius: 2 }}
+          >
+            Back to Stories
+          </Button>
         </Container>
       </BackgroundContainer>
     );
   }
 
+  // 🎯 FIXED: Extract category info before JSX
+  const categoryInfo = getCategoryInfo(story.category);
+  const CategoryIconComponent = categoryInfo.icon;
+
   return (
     <BackgroundContainer>
-      {/* Floating Particles */}
-      {[...Array(6)].map((_, i) => (
-        <FloatingParticle
-          key={i}
-          delay={i * 0.4}
-          size={Math.random() * 25 + 10}
-          left={Math.random() * 100}
-          top={Math.random() * 100}
-        />
-      ))}
-
       <Container maxWidth="md">
         {/* Header Actions */}
         <Fade in={mounted} timeout={600}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-            <ActionButton onClick={() => navigate('/browse')}>
-              <ArrowBack sx={{ color: '#81c784' }} />
-            </ActionButton>
-
-            <Stack direction="row" spacing={1}>
-              <ActionButton>
-                <Share sx={{ color: '#81c784' }} />
-              </ActionButton>
-              <ActionButton>
-                <BookmarkBorder sx={{ color: '#81c784' }} />
-              </ActionButton>
-            </Stack>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={() => navigate('/browse')}
+              sx={{ 
+                borderRadius: 2, 
+                color: '#81c784', 
+                borderColor: '#81c784',
+                '&:hover': { borderColor: '#66bb6a', backgroundColor: 'rgba(129, 199, 132, 0.1)' }
+              }}
+            >
+              Back to Stories
+            </Button>
+            <IconButton 
+              sx={{ 
+                color: '#81c784',
+                '&:hover': { backgroundColor: 'rgba(129, 199, 132, 0.1)' }
+              }}
+            >
+              <Share />
+            </IconButton>
           </Box>
         </Fade>
 
-        {/* Story Content */}
+        {/* Main Story Card */}
         <Grow in={mounted} timeout={800}>
           <StoryCard>
-            {/* Story Header */}
-            <Box sx={{ mb: 6 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-                <Chip 
-                  icon={<CategoryIcon sx={{ fontSize: '1rem' }} />}
-                  label={story.category?.charAt(0).toUpperCase() + story.category?.slice(1)}
-                  sx={{ 
-                    background: `linear-gradient(135deg, ${categoryColor}, ${categoryColor}90)`,
-                    color: 'white',
+            {/* Category Badge */}
+            {story.category && (
+              <Box mb={3}>
+                <Chip
+                  icon={<CategoryIconComponent />}
+                  label={categoryInfo.label}
+                  sx={{
+                    background: 'linear-gradient(135deg, #81c784, #aed581)',
+                    color: '#fff',
                     fontWeight: 600,
-                    fontSize: '0.875rem',
-                    height: 32
+                    padding: '8px 12px',
+                    '& .MuiSvgIcon-root': { color: '#fff' }
                   }}
                 />
-                
-                {/* 🎯 NEW: Enhanced Stats Display */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
-                  <StatsItem>
-                    <Visibility sx={{ fontSize: 18, color: '#81c784' }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32' }}>
-                      {story.stats?.views || 0}
-                    </Typography>
-                  </StatsItem>
-                  
-                  <StatsItem>
-                    <FavoriteOutlined sx={{ fontSize: 18, color: '#e91e63' }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32' }}>
-                      {story.stats?.likes || 0}
-                    </Typography>
-                  </StatsItem>
-                  
-                  <StatsItem>
-                    <Comment sx={{ fontSize: 18, color: '#2196f3' }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32' }}>
-                      {story.stats?.comments || 0}
-                    </Typography>
-                  </StatsItem>
-                  
-                  <StatsItem>
-                    <AccessTime sx={{ fontSize: 18, color: '#ff9800' }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32' }}>
-                      {story.metadata?.readTime || 1} min
-                    </Typography>
-                  </StatsItem>
-                </Box>
               </Box>
+            )}
 
-              <Typography variant="h3" sx={{ 
+            {/* Story Title */}
+            <Typography 
+              variant={isMobile ? "h4" : "h3"}
+              sx={{ 
                 fontWeight: 800, 
                 mb: 4,
-                color: '#1a202c',
-                lineHeight: 1.2,
-                fontSize: { xs: '2rem', md: '2.5rem' }
-              }}>
-                {story.title}
-              </Typography>
+                color: '#2e7d32',
+                lineHeight: 1.2
+              }}
+            >
+              {story.title}
+            </Typography>
 
-              <Typography variant="body1" color="text.secondary" sx={{ 
-                mb: 4, 
-                fontWeight: 500,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                📅 Published on {new Date(story.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </Typography>
+            {/* Author Info */}
+            <Box display="flex" alignItems="center" mb={4}>
+              <Avatar
+                sx={{
+                  width: 56,
+                  height: 56,
+                  background: 'linear-gradient(135deg, #81c784, #aed581)',
+                  mr: 2,
+                  animation: `${gentleFloat} 4s ease-in-out infinite`
+                }}
+              >
+                <Person sx={{ fontSize: '1.8rem' }} />
+              </Avatar>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  {story.author?.name || 'Anonymous'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  @{story.author?.username || 'user'} • {story.readTime || 1} min read
+                </Typography>
+              </Box>
+            </Box>
 
-              {story.tags?.length > 0 && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4 }}>
-                  {story.tags.map((tag, index) => (
-                    <Chip 
-                      key={index}
-                      label={`#${tag}`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ 
-                        borderColor: 'rgba(129, 199, 132, 0.3)',
-                        color: '#81c784',
-                        fontWeight: 500,
-                        '&:hover': { 
-                          backgroundColor: 'rgba(129, 199, 132, 0.1)',
-                          transform: 'translateY(-1px)'
-                        }
-                      }}
-                    />
-                  ))}
+            {/* 🎯 Recovery Time and Status Display */}
+            <Box mb={4}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
+                Recovery Journey
+              </Typography>
+              <Stack direction={isMobile ? 'column' : 'row'} spacing={2} mb={2}>
+                {story.metadata?.recoveryTime && (
+                  <MetadataChip
+                    variant="recovery"
+                    icon={<AccessTime />}
+                    label={`Recovery Time: ${story.metadata.recoveryTime}`}
+                  />
+                )}
+                {story.metadata?.currentStatus && (
+                  <MetadataChip
+                    variant="status"
+                    icon={<TrendingUp />}
+                    label={`Current Status: ${story.metadata.currentStatus.replace('_', ' ').toUpperCase()}`}
+                  />
+                )}
+              </Stack>
+              {story.metadata?.currentStatus === 'thriving' && (
+                <Box display="flex" alignItems="center" mt={1}>
+                  <CheckCircle sx={{ color: '#4caf50', fontSize: 20, mr: 1 }} />
+                  <Typography variant="body2" sx={{ color: '#4caf50', fontWeight: 600 }}>
+                    Success Story - Fully Recovered & Thriving
+                  </Typography>
                 </Box>
               )}
             </Box>
 
-            <Divider sx={{ mb: 6 }} />
-
-            {/* Enhanced Story Content */}
-            <StoryContent>
-              <Typography 
-                component="div"
-                sx={{ 
-                  '& > *': { mb: 3 },
-                  '& > *:last-child': { mb: 0 }
-                }}
-              >
-                {formatContent(story.content).split('\n\n').map((paragraph, index) => (
-                  <Typography
-                    key={index}
-                    variant="body1"
-                    sx={{
-                      lineHeight: 1.8,
-                      fontSize: '1.125rem',
-                      color: '#374151',
-                      fontWeight: 400,
-                      mb: 3,
-                      ...(index === 0 && {
-                        fontSize: '1.2rem',
-                        fontWeight: 500,
-                        color: '#1f2937',
-                        '&::first-letter': {
-                          fontSize: '3.5rem',
-                          fontWeight: 800,
-                          float: 'left',
-                          lineHeight: '3rem',
-                          paddingRight: '12px',
-                          marginTop: '4px',
-                          marginRight: '4px',
-                          background: 'linear-gradient(135deg, #81c784, #aed581)',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                        }
-                      })
-                    }}
-                  >
-                    {paragraph}
-                  </Typography>
-                ))}
-              </Typography>
-            </StoryContent>
-
-            {/* 🎯 NEW: Interaction Bar */}
-            <InteractionBar>
-              <LikeButton
-                storyId={story._id}
-                initialLikes={story.stats?.likes || 0}
-                initialIsLiked={story.isLiked || false}
-                onLikeChange={handleLikeChange}
-              />
-              
-              <ElegantButton
-                variant="outlined"
-                startIcon={<BookmarkBorder />}
-                size="small"
-              >
-                Save
-              </ElegantButton>
-
-              <ElegantButton
-                variant="outlined"
-                startIcon={<Share />}
-                size="small"
-              >
-                Share
-              </ElegantButton>
-            </InteractionBar>
+            {/* Story Content */}
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                whiteSpace: 'pre-line',
+                lineHeight: 1.8,
+                fontSize: '1.1rem',
+                mb: 4,
+                color: 'text.primary'
+              }}
+            >
+              {story.content}
+            </Typography>
 
             {/* Key Lessons */}
-            {story.metadata?.keyLessons?.length > 0 && (
-              <>
-                <Divider sx={{ my: 6 }} />
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h4" sx={{ 
-                    fontWeight: 700, 
-                    mb: 4,
-                    color: '#81c784',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2
-                  }}>
-                    <AutoFixHigh sx={{ fontSize: '2rem' }} />
-                    Key Takeaways
-                  </Typography>
-                  <Stack spacing={3}>
-                    {story.metadata.keyLessons.map((lesson, index) => (
-                      <Box key={index} sx={{ 
-                        p: 4, 
-                        background: 'linear-gradient(135deg, rgba(129, 199, 132, 0.05), rgba(144, 202, 249, 0.03))',
-                        borderRadius: 3,
-                        border: '1px solid rgba(129, 199, 132, 0.15)',
-                        position: 'relative',
-                        '&::before': {
-                          content: `"${index + 1}"`,
-                          position: 'absolute',
-                          top: -10,
-                          left: 20,
-                          background: 'linear-gradient(135deg, #81c784, #aed581)',
-                          color: 'white',
+            {story.metadata?.keyLessons && story.metadata.keyLessons.length > 0 && (
+              <Box mb={4}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
+                  Key Lessons Learned
+                </Typography>
+                <Box
+                  sx={{
+                    background: 'rgba(129, 199, 132, 0.1)',
+                    borderRadius: 3,
+                    padding: 3,
+                    borderLeft: '4px solid #81c784'
+                  }}
+                >
+                  {story.metadata.keyLessons.map((lesson, index) => (
+                    <Box key={index} display="flex" alignItems="flex-start" mb={1.5}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          background: '#81c784',
+                          color: '#fff',
                           borderRadius: '50%',
-                          width: 28,
-                          height: 28,
+                          width: 24,
+                          height: 24,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '0.875rem',
-                          fontWeight: 700
-                        }
-                      }}>
-                        <Typography variant="body1" sx={{ 
-                          fontWeight: 500,
-                          fontSize: '1.1rem',
-                          lineHeight: 1.6,
-                          color: '#374151',
-                          pt: 1
-                        }}>
-                          {lesson}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Stack>
+                          fontWeight: 700,
+                          mr: 2,
+                          mt: 0.5,
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        {index + 1}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, lineHeight: 1.6 }}>
+                        {lesson}
+                      </Typography>
+                    </Box>
+                  ))}
                 </Box>
-              </>
+              </Box>
+            )}
+
+            {/* Tags */}
+            {story.tags && story.tags.length > 0 && (
+              <Box mb={4}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
+                  Tags
+                </Typography>
+                <Box display="flex" flexWrap="wrap" gap={1}>
+                  {story.tags.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={`#${tag}`}
+                      variant="outlined"
+                      sx={{
+                        borderColor: '#81c784',
+                        color: '#81c784',
+                        fontWeight: 600,
+                        '&:hover': { backgroundColor: 'rgba(129, 199, 132, 0.1)' }
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            <Divider sx={{ mb: 4 }} />
+
+            {/* 🎯 UPDATED: Reduced Icon Sizes in Stats */}
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+              <Stack direction="row" spacing={3}>
+                <Box display="flex" alignItems="center">
+                  <Visibility sx={{ fontSize: 18, color: '#81c784', mr: 1 }} /> {/* Reduced from 20 */}
+                  <Typography variant="body2" fontWeight="600">
+                    {story.stats?.views || 0} views
+                  </Typography>
+                </Box>
+                <Box display="flex" alignItems="center">
+                  <Favorite sx={{ fontSize: 18, color: '#e91e63', mr: 1 }} /> {/* Reduced from 20 */}
+                  <Typography variant="body2" fontWeight="600">
+                    {story.stats?.likes || 0} likes
+                  </Typography>
+                </Box>
+                <Box display="flex" alignItems="center">
+                  <Comment sx={{ fontSize: 18, color: '#2196f3', mr: 1 }} /> {/* Reduced from 20 */}
+                  <Typography variant="body2" fontWeight="600">
+                    {story.stats?.comments || 0} comments
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+
+            {/* 🎯 FIXED: Action Buttons - Available for ALL Users */}
+            <Stack direction="row" spacing={2} justifyContent="center">
+              <ActionButton
+                variant="like"
+                selected={story.isLiked}
+                startIcon={
+                  likeLoading ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : story.isLiked ? (
+                    <Favorite />
+                  ) : (
+                    <FavoriteOutlined />
+                  )
+                }
+                onClick={handleLike}
+                disabled={likeLoading || !isAuthenticated}
+              >
+                {story.isLiked ? 'Liked' : 'Like'} ({story.stats?.likes || 0})
+              </ActionButton>
+
+              <ActionButton
+                variant="comment"
+                startIcon={showComments ? <ExpandLess /> : <ExpandMore />}
+                onClick={() => setShowComments(!showComments)}
+              >
+                Comments ({story.stats?.comments || 0})
+              </ActionButton>
+            </Stack>
+
+            {/* Authentication Notice */}
+            {!isAuthenticated && (
+              <Box textAlign="center" mt={3}>
+                <Typography variant="body2" color="text.secondary">
+                  <Button
+                    variant="text" 
+                    onClick={() => navigate('/login')}
+                    sx={{ textTransform: 'none', color: '#81c784' }}
+                  >
+                    Sign in
+                  </Button>
+                  {' '}to like and comment on stories
+                </Typography>
+              </Box>
             )}
           </StoryCard>
         </Grow>
 
-        {/* Author Information */}
-        <Fade in={mounted} timeout={1200}>
-          <AuthorCard>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Avatar
-                sx={{ 
-                  width: 80, 
-                  height: 80,
-                  background: 'linear-gradient(135deg, #81c784, #aed581)',
-                  fontSize: '2rem',
-                  fontWeight: 800,
-                  animation: `${gentleFloat} 4s ease-in-out infinite, ${softGlow} 3s ease-in-out infinite alternate`,
-                }}
-              >
-                {story.author?.name?.charAt(0) || <Person />}
-              </Avatar>
-              
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#2e7d32' }}>
-                  {story.author?.name || 'Anonymous Author'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
-                  {story.author?.bio || 'Sharing stories of transformation and growth.'}
-                </Typography>
-                {story.author?.location && (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                    📍 {story.author.location}
-                  </Typography>
-                )}
-              </Box>
-              
-              <ElegantButton variant="primary">
-                Follow
-              </ElegantButton>
-            </Box>
-          </AuthorCard>
-        </Fade>
+        {/* Comments Section */}
+        <Collapse in={showComments}>
+          <Fade in={showComments}>
+            <StoryCard>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#2e7d32' }}>
+                Comments ({story.stats?.comments || 0})
+              </Typography>
 
-        {/* 🎯 NEW: Comments Section */}
-        <Fade in={mounted} timeout={1400}>
-          <Box sx={{ mt: 4 }}>
-            <Comments 
-              storyId={story._id} 
-              initialCommentsCount={story.stats?.comments || 0}
-            />
-          </Box>
-        </Fade>
+              {/* Add Comment Form - Only for authenticated users */}
+              {isAuthenticated ? (
+                <Box mb={4}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    placeholder="Share your thoughts..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    sx={{
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)'
+                      }
+                    }}
+                  />
+                  <Box display="flex" justifyContent="flex-end">
+                    <Button
+                      variant="contained"
+                      startIcon={commentLoading ? <CircularProgress size={18} color="inherit" /> : <Send />}
+                      onClick={handleComment}
+                      disabled={!commentText.trim() || commentLoading}
+                      sx={{
+                        borderRadius: 2,
+                        background: 'linear-gradient(135deg, #81c784, #aed581)',
+                        '&:hover': { background: 'linear-gradient(135deg, #66bb6a, #81c784)' }
+                      }}
+                    >
+                      {commentLoading ? 'Posting...' : 'Post Comment'}
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <Box mb={4} textAlign="center" py={2} sx={{ background: 'rgba(129, 199, 132, 0.1)', borderRadius: 2 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    <Button
+                      variant="text" 
+                      onClick={() => navigate('/login')}
+                      sx={{ textTransform: 'none', color: '#81c784', fontWeight: 600 }}
+                    >
+                      Sign in
+                    </Button>
+                    {' '}to join the conversation
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Comments List */}
+              {story.comments && story.comments.length > 0 ? (
+                story.comments.map((comment, index) => (
+                  <CommentCard key={index}>
+                    <Box display="flex" alignItems="flex-start" gap={2}>
+                      <Avatar sx={{ width: 40, height: 40, background: '#81c784' }}>
+                        <Person />
+                      </Avatar>
+                      <Box flex={1}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                          {comment.user?.name || 'Anonymous'}
+                        </Typography>
+                        <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                          {comment.content}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CommentCard>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={4}>
+                  No comments yet. Be the first to share your thoughts!
+                </Typography>
+              )}
+            </StoryCard>
+          </Fade>
+        </Collapse>
       </Container>
     </BackgroundContainer>
   );

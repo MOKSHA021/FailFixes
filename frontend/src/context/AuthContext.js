@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import { AutoFixHigh } from '@mui/icons-material';
 import { keyframes } from '@mui/material/styles';
-import axios from 'axios'; // Use axios directly instead of api service
+import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -48,7 +48,19 @@ export function AuthProvider({ children }) {
         
         if (token && userData) {
           const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
+          setUser({
+            ...parsedUser,
+            displayUsername: parsedUser.username || parsedUser.name || `user_${parsedUser._id?.slice(-6)}`,
+            stats: {
+              storiesCount: 0,
+              totalViews: 0,
+              totalLikes: 0,
+              totalComments: 0,
+              followersCount: 0,
+              followingCount: 0,
+              ...parsedUser.stats
+            }
+          });
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
@@ -67,11 +79,24 @@ export function AuthProvider({ children }) {
       const response = await axios.post('http://localhost:5000/api/auth/login', credentials);
       
       if (response.data.success) {
-        const { token, user } = response.data;
+        const { token, user: userData } = response.data;
         
         localStorage.setItem('ff_token', token);
-        localStorage.setItem('ff_user', JSON.stringify(user));
-        setUser(user);
+        localStorage.setItem('ff_user', JSON.stringify(userData));
+        
+        setUser({
+          ...userData,
+          displayUsername: userData.username || userData.name || `user_${userData._id?.slice(-6)}`,
+          stats: {
+            storiesCount: 0,
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            followersCount: 0,
+            followingCount: 0,
+            ...userData.stats
+          }
+        });
         
         return { success: true };
       } else {
@@ -88,36 +113,66 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const signup = async (userData) => {
+  const register = async (userData) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/signup', userData);
+      const response = await axios.post('http://localhost:5000/api/auth/register', userData);
       
       if (response.data.success) {
-        const { token, user } = response.data;
+        const { token, user: newUser } = response.data;
         
         localStorage.setItem('ff_token', token);
-        localStorage.setItem('ff_user', JSON.stringify(user));
-        setUser(user);
+        localStorage.setItem('ff_user', JSON.stringify(newUser));
+        
+        setUser({
+          ...newUser,
+          displayUsername: newUser.username || newUser.name || `user_${newUser._id?.slice(-6)}`,
+          stats: {
+            storiesCount: 0,
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            followersCount: 0,
+            followingCount: 0,
+            ...newUser.stats
+          }
+        });
         
         return { success: true };
       } else {
         return { 
           success: false, 
-          error: response.data.message || 'Signup failed' 
+          error: response.data.message || 'Registration failed' 
         };
       }
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Signup failed' 
+        error: error.response?.data?.message || 'Registration failed' 
       };
     }
+  };
+
+  const signup = async (userData) => {
+    return await register(userData);
   };
 
   const logout = () => {
     localStorage.removeItem('ff_token');
     localStorage.removeItem('ff_user');
     setUser(null);
+  };
+
+  const updateUser = (updatedUser) => {
+    const enhanced = {
+      ...updatedUser,
+      displayUsername: updatedUser.username || updatedUser.name || user?.displayUsername,
+      stats: {
+        ...user?.stats,
+        ...updatedUser.stats
+      }
+    };
+    setUser(enhanced);
+    localStorage.setItem('ff_user', JSON.stringify(enhanced));
   };
 
   if (loading) {
@@ -176,9 +231,12 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     isAuthenticated: !!user,
+    loading: false,
     login,
+    register,
     signup,
     logout,
+    updateUser,
   };
 
   return (

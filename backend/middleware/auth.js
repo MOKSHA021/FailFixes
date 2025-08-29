@@ -1,72 +1,121 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Protect routes - require valid JWT token
-exports.auth = async (req, res, next) => {
+const auth = async (req, res, next) => {
+  console.log('\n🔐 AUTH MIDDLEWARE');
+  
   try {
     const authHeader = req.header('Authorization');
+    console.log('Auth header present:', !!authHeader);
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader) {
+      console.error('❌ No Authorization header found');
       return res.status(401).json({ 
         success: false, 
-        message: 'Access denied. No valid token provided.' 
+        message: 'No token provided',
+        code: 'NO_TOKEN'
       });
     }
-    
-    const token = authHeader.substring(7);
-    console.log('Auth middleware: Token received, length:', token.length);
-    
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Auth middleware: Token decoded successfully for user ID:', decoded.id);
-      
-      const user = await User.findById(decoded.id).select('-password');
-      
-      if (!user || !user.isActive) {
-        console.log('Auth middleware: User not found or inactive');
-        return res.status(401).json({ 
-          success: false, 
-          message: 'Access denied. Invalid or inactive user.' 
-        });
-      }
-      
-      console.log('Auth middleware: User authenticated:', user.username);
-      req.user = user;
-      next();
-    } catch (jwtError) {
-      console.error('Auth middleware: JWT verification error:', jwtError.message);
+
+    const token = authHeader.startsWith('Bearer ') 
+      ? authHeader.slice(7) 
+      : authHeader;
+
+    if (!token) {
+      console.error('❌ No token in Authorization header');
       return res.status(401).json({ 
         success: false, 
-        message: 'Access denied. Invalid token.' 
+        message: 'Invalid token format',
+        code: 'INVALID_TOKEN_FORMAT'
       });
     }
+
+    console.log('✅ Token found, length:', token.length);
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('✅ Token verified, user ID:', decoded.id);
+
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      console.error('❌ User not found for token:', decoded.id);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    console.log('✅ User authenticated:', {
+      id: user._id.toString(),
+      name: user.name,
+      username: user.username
+    });
+    console.log('=== END AUTH MIDDLEWARE ===\n');
+
+    req.user = user;
+    next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('❌ Auth error:', error.message);
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid token',
+        code: 'INVALID_TOKEN'
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token expired',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+
     res.status(500).json({ 
       success: false, 
-      message: 'Server error in authentication' 
+      message: 'Authentication error',
+      code: 'AUTH_ERROR'
     });
   }
 };
 
-// Optional auth - doesn't require token but adds user if valid
-exports.optionalAuth = async (req, res, next) => {
-  const authHeader = req.header('Authorization');
+const optionalAuth = async (req, res, next) => {
+  console.log('\n🔓 === OPTIONAL AUTH MIDDLEWARE ===');
   
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const token = authHeader.substring(7);
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('-password');
-      
-      if (user && user.isActive) {
-        req.user = user;
-      }
-    } catch (error) {
-      // Continue without user
-      console.log('Optional auth: Invalid token, continuing without user');
+  try {
+    const authHeader = req.header('Authorization');
+    
+    if (!authHeader) {
+      console.log('No auth header - proceeding without authentication');
+      return next();
     }
+
+    const token = authHeader.startsWith('Bearer ') 
+      ? authHeader.slice(7) 
+      : authHeader;
+
+    if (!token) {
+      console.log('No token - proceeding without authentication');
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (user) {
+      console.log('✅ Optional auth successful:', user.name);
+      req.user = user;
+    }
+
+    console.log('=== END OPTIONAL AUTH ===\n');
+    next();
+  } catch (error) {
+    console.log('Optional auth failed - proceeding without auth:', error.message);
+    next();
   }
-  
-  next();
 };
+
+module.exports = { auth, optionalAuth };
