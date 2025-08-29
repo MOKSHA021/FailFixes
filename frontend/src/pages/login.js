@@ -34,7 +34,7 @@ import {
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 // Soft Animations
 const gentleFloat = keyframes`
@@ -210,7 +210,6 @@ const FeatureShowcase = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4)
 }));
 
-// ✅ FIXED: Use sx prop instead of accessing undefined theme colors
 const FeatureChip = ({ icon, text, color, ...props }) => (
   <Chip
     icon={icon}
@@ -235,7 +234,6 @@ const FeatureChip = ({ icon, text, color, ...props }) => (
   />
 );
 
-// ✅ FIXED: Enhanced TextField with proper autofill handling
 const EnhancedTextField = styled(TextField)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   '& .MuiOutlinedInput-root': {
@@ -265,7 +263,6 @@ const EnhancedTextField = styled(TextField)(({ theme }) => ({
         borderWidth: '2px'
       }
     },
-    // ✅ FIXED: Handle autofill styling conflicts
     '& input:-webkit-autofill': {
       WebkitBoxShadow: '0 0 0 1000px rgba(255, 255, 255, 0.9) inset !important',
       WebkitTextFillColor: 'inherit !important',
@@ -353,6 +350,7 @@ const Login = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { login } = useAuth(); // Use AuthContext login method
   
   const [formData, setFormData] = useState({
     identifier: '',
@@ -363,7 +361,6 @@ const Login = () => {
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
   
-  // ✅ FIXED: States to handle autofill conflicts
   const [identifierHasValue, setIdentifierHasValue] = useState(false);
   const [passwordHasValue, setPasswordHasValue] = useState(false);
 
@@ -371,7 +368,6 @@ const Login = () => {
     setMounted(true);
   }, []);
 
-  // ✅ FIXED: Detect autofill on page load
   useLayoutEffect(() => {
     const checkAutofill = () => {
       const identifierInput = document.querySelector('input[name="identifier"]');
@@ -388,13 +384,11 @@ const Login = () => {
       }
     };
 
-    // Check multiple times as autofill timing varies
     setTimeout(checkAutofill, 100);
     setTimeout(checkAutofill, 500);
     setTimeout(checkAutofill, 1000);
   }, []);
 
-  // ✅ FIXED: Handle autofill animation events
   const makeAnimationStartHandler = (stateSetter) => (e) => {
     const autofilled = !!e.target?.matches("*:-webkit-autofill");
     if (e.animationName === "mui-auto-fill") {
@@ -412,7 +406,6 @@ const Login = () => {
       [name]: value
     });
     
-    // ✅ FIXED: Update hasValue states based on input content
     if (name === 'identifier') {
       setIdentifierHasValue(value.length > 0);
     }
@@ -429,15 +422,16 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', formData);
-
-      if (response.data.success) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Use AuthContext login method instead of direct API call
+      const result = await login(formData);
+      
+      if (result.success) {
         navigate('/dashboard');
+      } else {
+        setError(result.error || 'Login failed. Please try again.');
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Login failed. Please try again.');
+      setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -446,13 +440,8 @@ const Login = () => {
   const handleGuestAccess = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/guest-session');
-      
-      if (response.data.success) {
-        localStorage.setItem('guestToken', response.data.guestToken);
-        localStorage.setItem('guestId', response.data.guestId);
-        navigate('/browse');
-      }
+      // You can implement guest session logic here
+      navigate('/browse');
     } catch (error) {
       setError('Failed to create guest session');
     } finally {
@@ -563,7 +552,6 @@ const Login = () => {
             )}
 
             <Box component="form" onSubmit={handleSubmit} noValidate>
-              {/* ✅ FIXED: Enhanced TextField with autofill handling */}
               <EnhancedTextField
                 fullWidth
                 label="Email or Username"
@@ -581,7 +569,6 @@ const Login = () => {
                 }}
               />
 
-              {/* ✅ FIXED: Enhanced Password field with autofill handling */}
               <EnhancedTextField
                 fullWidth
                 label="Password"
