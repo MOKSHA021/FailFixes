@@ -45,6 +45,7 @@ import {
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme as useAppTheme } from '../context/ThemeContext';
 import { dashboardAPI } from '../services/api';
 
 // Animations
@@ -65,9 +66,13 @@ const pulse = keyframes`
 `;
 
 // Styled Components
-const BackgroundContainer = styled(Box)(({ theme }) => ({
+const BackgroundContainer = styled(Box)(({ theme, darkMode }) => ({
   minHeight: '100vh',
-  background: `
+  background: darkMode ? `
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #1e293b 75%, #0f172a 100%)
+  ` : `
     radial-gradient(circle at 20% 20%, rgba(129, 199, 132, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(144, 202, 249, 0.15) 0%, transparent 50%),
     linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 25%, #fef7f0 50%, #f0fff4 75%, #f5f8ff 100%)
@@ -76,26 +81,40 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
   paddingBottom: theme.spacing(8),
 }));
 
-const WelcomeSection = styled(Paper)(({ theme }) => ({
-  background: `linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)`,
+const WelcomeSection = styled(Paper)(({ theme, darkMode }) => ({
+  background: darkMode 
+    ? `linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)`
+    : `linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)`,
   backdropFilter: 'blur(20px)',
   borderRadius: '28px',
   padding: theme.spacing(6),
   marginBottom: theme.spacing(6),
-  border: '1px solid rgba(255, 255, 255, 0.3)',
-  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1)'
+  border: darkMode 
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(255, 255, 255, 0.3)',
+  boxShadow: darkMode 
+    ? '0 20px 60px rgba(0, 0, 0, 0.3)'
+    : '0 20px 60px rgba(0, 0, 0, 0.1)'
 }));
 
-const StatsCard = styled(Card)(({ color }) => ({
+const StatsCard = styled(Card)(({ color, darkMode }) => ({
   borderRadius: '24px',
-  background: `linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)`,
+  background: darkMode 
+    ? `linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%)`
+    : `linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)`,
   backdropFilter: 'blur(15px)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
+  border: darkMode 
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(255, 255, 255, 0.3)',
   transition: 'all 0.4s ease',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+  boxShadow: darkMode 
+    ? '0 8px 32px rgba(0, 0, 0, 0.3)'
+    : '0 8px 32px rgba(0, 0, 0, 0.08)',
   '&:hover': {
     transform: 'translateY(-12px) scale(1.03)',
-    boxShadow: '0 32px 80px rgba(0, 0, 0, 0.15)',
+    boxShadow: darkMode 
+      ? '0 32px 80px rgba(0, 0, 0, 0.4)'
+      : '0 32px 80px rgba(0, 0, 0, 0.15)',
     '& .icon-container': {
       transform: 'scale(1.15) rotate(10deg)',
       background: `linear-gradient(135deg, ${color}, ${color}dd)`,
@@ -161,6 +180,7 @@ const ActionButton = styled(Button)(({ variant: buttonVariant }) => ({
 
 function Dashboard() {
   const { user, isAuthenticated } = useAuth();
+  const { mode } = useAppTheme();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -169,7 +189,9 @@ function Dashboard() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
+  const muiTheme = useTheme();
+  
+  const darkMode = mode === 'dark';
 
   // 🎯 FIXED: Memoized fetch function to prevent infinite loops
   const fetchDashboardData = useCallback(async (isManualRefresh = false) => {
@@ -249,7 +271,7 @@ function Dashboard() {
 
   if (!isAuthenticated || !user) {
     return (
-      <BackgroundContainer>
+      <BackgroundContainer darkMode={darkMode}>
         <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
           <Typography variant="h4" sx={{ mb: 2, fontWeight: 800, color: '#2e7d32' }}>
             Welcome to FailFixes! 🚀
@@ -315,7 +337,7 @@ function Dashboard() {
   ];
 
   return (
-    <BackgroundContainer>
+    <BackgroundContainer darkMode={darkMode}>
       <Container maxWidth="lg">
         {error && (
           <Alert severity="warning" sx={{ mb: 4, borderRadius: 3 }}>
@@ -325,7 +347,7 @@ function Dashboard() {
 
         {/* Welcome Section */}
         <Fade in={mounted} timeout={1000}>
-          <WelcomeSection>
+          <WelcomeSection darkMode={darkMode}>
             <Grid container spacing={4} alignItems="center">
               <Grid item xs={12} md={8}>
                 <Box display="flex" alignItems="center" mb={2}>
@@ -401,9 +423,9 @@ function Dashboard() {
         {/* Stats Cards */}
         <Grid container spacing={4} sx={{ mb: 6 }}>
           {statsData.map((stat, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
-              <Grow in={mounted} timeout={1200 + index * 200}>
-                <StatsCard color={stat.color}>
+                          <Grid item xs={12} sm={6} md={3} key={index}>
+                <Grow in={mounted} timeout={1200 + index * 200}>
+                  <StatsCard color={stat.color} darkMode={darkMode}>
                   <CardContent sx={{ p: 4, textAlign: 'center' }}>
                     <IconContainer className="icon-container" color={stat.color}>
                       {React.cloneElement(stat.icon, { 

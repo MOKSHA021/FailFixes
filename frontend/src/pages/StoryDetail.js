@@ -32,7 +32,7 @@ import {
   Delete,
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
-import { useAuth } from '../App';
+import { useAuth } from '../context/AuthContext';
 import  api  from '../services/api';
 
 // Animations

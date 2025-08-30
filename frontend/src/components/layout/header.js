@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import {
   AppBar, Toolbar, Typography, Button, IconButton, Avatar, Menu, MenuItem,
   Box, Container, Drawer, List, ListItem, ListItemIcon, ListItemText,
-  useTheme, useMediaQuery, Badge, Divider
+  useTheme as useMuiTheme, useMediaQuery, Badge, Divider
 } from '@mui/material';
 import {
   AutoFixHigh, Menu as MenuIcon, Dashboard, Create, Explore, Person,
-  Settings, Logout, Notifications, Login, PersonAdd, Home, Close, Timeline
+  Settings, Logout, Notifications, Login, PersonAdd, Home, Close, Timeline,
+  LightMode, DarkMode
 } from '@mui/icons-material';
+
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 // 🎨 **ELEGANT ANIMATIONS - Matching Home Style**
 const gentleFloat = keyframes`
@@ -245,11 +248,12 @@ const ProfileMenu = styled(Menu)(({ theme }) => ({
 
 function Header() {
   const { user, logout, isAuthenticated } = useAuth();
+  const { mode, toggleTheme } = useTheme();
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -430,6 +434,25 @@ function Header() {
             <Box sx={{ ml: 2 }}>
               {isAuthenticated ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {/* Theme Toggle Button */}
+                  <IconButton
+                    onClick={toggleTheme}
+                    sx={{ 
+                      background: 'rgba(129, 199, 132, 0.1)',
+                      '&:hover': { 
+                        background: 'rgba(129, 199, 132, 0.2)',
+                        transform: 'translateY(-1px)'
+                      }
+                    }}
+                    title={mode === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+                  >
+                    {mode === 'light' ? (
+                      <DarkMode sx={{ color: '#81c784' }} />
+                    ) : (
+                      <LightMode sx={{ color: '#81c784' }} />
+                    )}
+                  </IconButton>
+                  
                   <IconButton
                     sx={{ 
                       background: 'rgba(129, 199, 132, 0.1)',
@@ -463,7 +486,26 @@ function Header() {
                   </Avatar>
                 </Box>
               ) : (
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {/* Theme Toggle Button */}
+                  <IconButton
+                    onClick={toggleTheme}
+                    sx={{ 
+                      background: 'rgba(129, 199, 132, 0.1)',
+                      '&:hover': { 
+                        background: 'rgba(129, 199, 132, 0.2)',
+                        transform: 'translateY(-1px)'
+                      }
+                    }}
+                    title={mode === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+                  >
+                    {mode === 'light' ? (
+                      <DarkMode sx={{ color: '#81c784' }} />
+                    ) : (
+                      <LightMode sx={{ color: '#81c784' }} />
+                    )}
+                  </IconButton>
+                  
                   <ElegantButton
                     variant="outlined"
                     startIcon={<Login />}

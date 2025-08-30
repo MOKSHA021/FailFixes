@@ -46,6 +46,7 @@ import {
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { storiesAPI, usersAPI } from '../services/api';
 import FollowButton from '../components/FollowButton';
 import UserSuggestions from '../components/UserSuggestions';
@@ -88,9 +89,20 @@ const softParticle = keyframes`
   }
 `;
 
-const BackgroundContainer = styled(Box)(({ theme }) => ({
+const BackgroundContainer = styled(Box)(({ theme, darkMode }) => ({
   minHeight: '100vh',
-  background: `
+  background: darkMode ? `
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 60%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, 
+      #0f172a 0%, 
+      #1e293b 25%,
+      #334155 50%,
+      #1e293b 75%,
+      #0f172a 100%
+    )
+  ` : `
     radial-gradient(circle at 20% 20%, rgba(174, 213, 129, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(255, 183, 195, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 40% 60%, rgba(179, 229, 252, 0.15) 0%, transparent 50%),
@@ -113,29 +125,41 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
     left: 0,
     right: 0,
     bottom: 0,
-    background: `
+    background: darkMode ? `
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2310b981' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
+    ` : `
       url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e8f5e8' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
     `,
     pointerEvents: 'none',
   },
 }));
 
-const FloatingParticle = styled(Box)(({ delay, size, left, top }) => ({
+const FloatingParticle = styled(Box)(({ delay, size, left, top, darkMode }) => ({
   position: 'absolute',
   left: `${left}%`,
   top: `${top}%`,
   width: `${size}px`,
   height: `${size}px`,
   borderRadius: '50%',
-  background: 'linear-gradient(135deg, rgba(174, 213, 129, 0.2), rgba(179, 229, 252, 0.15))',
+  background: darkMode 
+    ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(99, 102, 241, 0.1))'
+    : 'linear-gradient(135deg, rgba(174, 213, 129, 0.2), rgba(179, 229, 252, 0.15))',
   animation: `${softParticle} ${4 + Math.random() * 3}s ease-in-out infinite`,
   animationDelay: `${delay}s`,
   backdropFilter: 'blur(1px)',
-  border: '1px solid rgba(174, 213, 129, 0.1)'
+  border: darkMode 
+    ? '1px solid rgba(16, 185, 129, 0.1)'
+    : '1px solid rgba(174, 213, 129, 0.1)'
 }));
 
-const HeroCard = styled(Paper)(({ theme }) => ({
-  background: `
+const HeroCard = styled(Paper)(({ theme, darkMode }) => ({
+  background: darkMode ? `
+    linear-gradient(135deg, 
+      rgba(30, 41, 59, 0.85) 0%,
+      rgba(30, 41, 59, 0.75) 50%,
+      rgba(30, 41, 59, 0.65) 100%
+    )
+  ` : `
     linear-gradient(135deg, 
       rgba(255, 255, 255, 0.85) 0%,
       rgba(255, 255, 255, 0.75) 50%,
@@ -144,14 +168,20 @@ const HeroCard = styled(Paper)(({ theme }) => ({
   `,
   backdropFilter: 'blur(20px) saturate(120%)',
   WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
+  border: darkMode 
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(255, 255, 255, 0.3)',
   borderRadius: '24px',
   padding: theme.spacing(8, 6),
   textAlign: 'center',
   marginBottom: theme.spacing(8),
   position: 'relative',
   overflow: 'hidden',
-  boxShadow: `
+  boxShadow: darkMode ? `
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1)
+  ` : `
     0 8px 32px rgba(0, 0, 0, 0.08),
     0 4px 16px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.6)
@@ -184,11 +214,16 @@ const HeroCard = styled(Paper)(({ theme }) => ({
   }
 }));
 
-const StatCard = styled(Card)(({ theme }) => ({
+const StatCard = styled(Card)(({ theme, darkMode }) => ({
   textAlign: 'center',
   padding: theme.spacing(4),
   borderRadius: '20px',
-  background: `
+  background: darkMode ? `
+    linear-gradient(135deg, 
+      rgba(30, 41, 59, 0.9) 0%,
+      rgba(30, 41, 59, 0.8) 100%
+    )
+  ` : `
     linear-gradient(135deg, 
       rgba(255, 255, 255, 0.9) 0%,
       rgba(255, 255, 255, 0.8) 100%
@@ -196,24 +231,37 @@ const StatCard = styled(Card)(({ theme }) => ({
   `,
   backdropFilter: 'blur(15px) saturate(120%)',
   WebkitBackdropFilter: 'blur(15px) saturate(120%)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
+  border: darkMode 
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(255, 255, 255, 0.3)',
   height: '100%',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  boxShadow: `
+  boxShadow: darkMode ? `
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2)
+  ` : `
     0 4px 16px rgba(0, 0, 0, 0.08),
     0 2px 8px rgba(0, 0, 0, 0.04)
   `,
   '&:hover': {
     transform: 'translateY(-4px) scale(1.01)',
-    boxShadow: `
+    boxShadow: darkMode ? `
+      0 12px 32px rgba(0, 0, 0, 0.4),
+      0 6px 16px rgba(129, 199, 132, 0.3)
+    ` : `
       0 12px 32px rgba(0, 0, 0, 0.12),
       0 6px 16px rgba(129, 199, 132, 0.2)
     `,
   }
 }));
 
-const FeatureCard = styled(Paper)(({ theme }) => ({
-  background: `
+const FeatureCard = styled(Paper)(({ theme, darkMode }) => ({
+  background: darkMode ? `
+    linear-gradient(135deg, 
+      rgba(30, 41, 59, 0.85) 0%,
+      rgba(30, 41, 59, 0.75) 100%
+    )
+  ` : `
     linear-gradient(135deg, 
       rgba(255, 255, 255, 0.85) 0%,
       rgba(255, 255, 255, 0.75) 100%
@@ -221,11 +269,16 @@ const FeatureCard = styled(Paper)(({ theme }) => ({
   `,
   backdropFilter: 'blur(20px) saturate(120%)',
   WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
+  border: darkMode 
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(255, 255, 255, 0.3)',
   borderRadius: '20px',
   padding: theme.spacing(6),
   marginBottom: theme.spacing(6),
-  boxShadow: `
+  boxShadow: darkMode ? `
+    0 6px 24px rgba(0, 0, 0, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.2)
+  ` : `
     0 6px 24px rgba(0, 0, 0, 0.08),
     0 4px 16px rgba(0, 0, 0, 0.04)
   `,
@@ -292,6 +345,7 @@ const FeatureChip = ({ icon, text, color, ...props }) => (
 
 function Home() {
   const { user, isAuthenticated } = useAuth();
+  const { mode } = useTheme();
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
   const [stories, setStories] = useState([]);
@@ -300,6 +354,8 @@ function Home() {
   const [activeTab, setActiveTab] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [feedType, setFeedType] = useState('all');
+  
+  const darkMode = mode === 'dark';
 
   useEffect(() => {
     setMounted(true);
@@ -675,7 +731,7 @@ function Home() {
   // Show landing page for non-authenticated users
   if (!isAuthenticated) {
     return (
-      <BackgroundContainer>
+      <BackgroundContainer darkMode={darkMode}>
         {/* Floating Particles */}
         {[...Array(6)].map((_, i) => (
           <FloatingParticle
@@ -684,13 +740,14 @@ function Home() {
             size={Math.random() * 25 + 10}
             left={Math.random() * 100}
             top={Math.random() * 100}
+            darkMode={darkMode}
           />
         ))}
 
         <Container maxWidth="lg">
           {/* Hero Section */}
           <Fade in={mounted} timeout={800}>
-            <HeroCard>
+            <HeroCard darkMode={darkMode}>
               <Avatar sx={{ 
                 width: 80, 
                 height: 80,
@@ -771,7 +828,7 @@ function Home() {
             {stats.map((stat, index) => (
               <Grid item xs={12} md={4} key={index}>
                 <Grow in={mounted} timeout={1200 + index * 200}>
-                  <StatCard>
+                  <StatCard darkMode={darkMode}>
                     <Box sx={{
                       width: 60,
                       height: 60,
@@ -817,7 +874,7 @@ function Home() {
 
           {/* How It Works */}
           <Grow in={mounted} timeout={1600}>
-            <FeatureCard>
+            <FeatureCard darkMode={darkMode}>
               <Typography variant="h3" sx={{ 
                 mb: 6, 
                 textAlign: 'center',
@@ -889,7 +946,7 @@ function Home() {
 
   // Show feed for authenticated users
   return (
-    <BackgroundContainer>
+    <BackgroundContainer darkMode={darkMode}>
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           {/* Main Feed */}
