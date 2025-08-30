@@ -5,9 +5,17 @@ const User = require('../models/User');
 // @access  Public
 exports.signup = async (req, res) => {
   try {
-    const { name, email, username, password } = req.body;
+    // 🎯 KEY FIX: Extract displayName from request body and map it to name
+    const { name, email, username, password, displayName, allowAnonymous } = req.body;
+    
+    // Use displayName if provided, otherwise use name, otherwise use username as fallback
+    const actualName = displayName || name || username;
 
-    console.log('Signup attempt for:', { name, email, username });
+    console.log('Signup attempt for:', { 
+      name: actualName, // This will now always have a value
+      email, 
+      username 
+    });
 
     // Check if user exists
     const existingUser = await User.findOne({
@@ -23,8 +31,15 @@ exports.signup = async (req, res) => {
       });
     }
 
-    // Create user
-    const user = new User({ name, email, username, password });
+    // 🎯 Create user with mapped fields
+    const user = new User({ 
+      name: actualName, // Map displayName/name/username to name field
+      email, 
+      username, 
+      password,
+      allowAnonymous: allowAnonymous || false
+    });
+    
     await user.save();
 
     // Generate token
