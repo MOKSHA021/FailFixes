@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// import { useTheme as useMuiTheme, useMediaQuery } from '@mui/material';
 import {
   AppBar, Toolbar, Typography, Button, IconButton, Avatar, Menu, MenuItem,
   Box, Container, Drawer, List, ListItem, ListItemIcon, ListItemText,
@@ -45,24 +46,30 @@ const subtleShimmer = keyframes`
 
 // 🏗️ **ELEGANT STYLED COMPONENTS - Matching Home Style**
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
-  background: `
-    linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(255, 255, 255, 0.85) 100%
-    )
-  `,
+  background: theme.palette.mode === 'light' 
+    ? `linear-gradient(135deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.85) 100%
+      )`
+    : `linear-gradient(135deg,
+        rgba(15, 23, 42, 0.95) 0%,
+        rgba(30, 41, 59, 0.85) 100%
+      )`,
   backdropFilter: 'blur(20px) saturate(120%)',
   WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
+  border: `1px solid ${theme.palette.mode === 'light' 
+    ? 'rgba(255, 255, 255, 0.3)' 
+    : 'rgba(255, 255, 255, 0.1)'}`,
   borderTop: 'none',
   borderLeft: 'none',
   borderRight: 'none',
   color: theme.palette.text.primary,
-  boxShadow: `
-    0 4px 16px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6)
-  `,
+  boxShadow: theme.palette.mode === 'light'
+    ? `0 4px 16px rgba(0, 0, 0, 0.08),
+       0 2px 8px rgba(0, 0, 0, 0.04),
+       inset 0 1px 0 rgba(255, 255, 255, 0.6)`
+    : `0 4px 16px rgba(0, 0, 0, 0.3),
+       0 2px 8px rgba(0, 0, 0, 0.2)`,
   position: 'relative',
   overflow: 'hidden',
   '&::before': {
@@ -136,36 +143,47 @@ const ElegantButton = styled(Button)(({ theme, variant: buttonVariant, active })
     }
   }),
   ...(buttonVariant === 'nav' && {
-    color: active ? '#81c784' : theme.palette.text.secondary,
-    background: active 
-      ? 'linear-gradient(135deg, rgba(129, 199, 132, 0.15), rgba(144, 202, 249, 0.1))' 
+    color: active ? theme.palette.primary.main : theme.palette.text.secondary,
+    background: active
+      ? theme.palette.mode === 'light'
+        ? 'linear-gradient(135deg, rgba(129, 199, 132, 0.15), rgba(144, 202, 249, 0.1))'
+        : 'linear-gradient(135deg, rgba(129, 199, 132, 0.3), rgba(144, 202, 249, 0.2))'
       : 'transparent',
-    border: active ? '1px solid rgba(129, 199, 132, 0.3)' : '1px solid transparent',
+    border: active 
+      ? `1px solid ${theme.palette.primary.main}30` 
+      : '1px solid transparent',
     '&:hover': {
-      background: 'linear-gradient(135deg, rgba(129, 199, 132, 0.1), rgba(144, 202, 249, 0.1))',
-      color: '#81c784',
+      background: theme.palette.mode === 'light'
+        ? 'linear-gradient(135deg, rgba(129, 199, 132, 0.1), rgba(144, 202, 249, 0.1))'
+        : 'linear-gradient(135deg, rgba(129, 199, 132, 0.2), rgba(144, 202, 249, 0.15))',
+      color: theme.palette.primary.main,
       transform: 'translateY(-1px)',
-      border: '1px solid rgba(129, 199, 132, 0.3)',
-    }
-  })
+      border: `1px solid ${theme.palette.primary.main}50`,
+}})
 }));
 
 const StyledDrawer = styled(Drawer)(({ theme }) => ({
   '& .MuiDrawer-paper': {
     width: 280,
-    background: `
-      linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.95) 0%,
-        rgba(248, 250, 252, 0.95) 100%
-      )
-    `,
+    background: theme.palette.mode === 'light'
+      ? `linear-gradient(135deg,
+          rgba(255, 255, 255, 0.95) 0%,
+          rgba(248, 250, 252, 0.95) 100%
+        )`
+      : `linear-gradient(135deg,
+          rgba(15, 23, 42, 0.95) 0%,
+          rgba(30, 41, 59, 0.95) 100%
+        )`,
     backdropFilter: 'blur(20px) saturate(120%)',
     WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    boxShadow: `
-      0 8px 32px rgba(0, 0, 0, 0.08),
-      0 4px 16px rgba(0, 0, 0, 0.04)
-    `,
+    border: `1px solid ${theme.palette.mode === 'light' 
+      ? 'rgba(255, 255, 255, 0.3)' 
+      : 'rgba(255, 255, 255, 0.1)'}`,
+    boxShadow: theme.palette.mode === 'light'
+      ? `0 8px 32px rgba(0, 0, 0, 0.08),
+         0 4px 16px rgba(0, 0, 0, 0.04)`
+      : `0 8px 32px rgba(0, 0, 0, 0.3),
+         0 4px 16px rgba(0, 0, 0, 0.2)`,
   }
 }));
 
@@ -211,19 +229,25 @@ const ProfileMenu = styled(Menu)(({ theme }) => ({
     borderRadius: '16px',
     marginTop: theme.spacing(1),
     minWidth: 200,
-    background: `
-      linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.95) 0%,
-        rgba(248, 250, 252, 0.95) 100%
-      )
-    `,
+    background: theme.palette.mode === 'light'
+      ? `linear-gradient(135deg,
+          rgba(255, 255, 255, 0.95) 0%,
+          rgba(248, 250, 252, 0.95) 100%
+        )`
+      : `linear-gradient(135deg,
+          rgba(15, 23, 42, 0.95) 0%,
+          rgba(30, 41, 59, 0.95) 100%
+        )`,
     backdropFilter: 'blur(20px) saturate(120%)',
     WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    boxShadow: `
-      0 8px 32px rgba(0, 0, 0, 0.12),
-      0 4px 16px rgba(0, 0, 0, 0.08)
-    `,
+    border: `1px solid ${theme.palette.mode === 'light' 
+      ? 'rgba(255, 255, 255, 0.3)' 
+      : 'rgba(255, 255, 255, 0.1)'}`,
+    boxShadow: theme.palette.mode === 'light'
+      ? `0 8px 32px rgba(0, 0, 0, 0.12),
+         0 4px 16px rgba(0, 0, 0, 0.08)`
+      : `0 8px 32px rgba(0, 0, 0, 0.4),
+         0 4px 16px rgba(0, 0, 0, 0.3)`,
     '&::before': {
       content: '""',
       position: 'absolute',

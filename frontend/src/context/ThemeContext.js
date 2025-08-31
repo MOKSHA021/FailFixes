@@ -262,7 +262,7 @@ export const ThemeProvider = ({ children }) => {
           elevation2: {
             boxShadow: mode === 'light'
               ? '0 8px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.05)'
-              : '0 8px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3)',
+              : '0 8px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(42, 34, 34, 0.3)',
           },
           elevation3: {
             boxShadow: mode === 'light'
