@@ -1,55 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Link,
-  Alert,
-  CircularProgress,
-  FormControlLabel,
-  Checkbox,
-  IconButton,
-  InputAdornment,
-  Container,
-  Fade,
-  Slide,
-  Chip,
-  Stack,
-  Avatar,
-  LinearProgress,
-  useTheme,
-  useMediaQuery
+  Box, Paper, TextField, Button, Typography, Link, Alert,
+  CircularProgress, FormControlLabel, Checkbox, IconButton,
+  InputAdornment, Container, Fade, Slide, Chip, Stack, Avatar,
+  LinearProgress, useTheme, useMediaQuery
 } from '@mui/material';
 import {
-  Visibility,
-  VisibilityOff,
-  PersonAdd,
-  Email,
-  Person,
-  Security,
-  AutoFixHigh,
-  CheckCircle,
-  Groups,
-  Psychology,
-  TrendingUp,
-  Verified,
-  Shield,
-  ArrowForward,
-  Star
+  Visibility, VisibilityOff, PersonAdd, Email, Person, Security,
+  AutoFixHigh, CheckCircle, Groups, Psychology, TrendingUp,
+  Verified, Shield, ArrowForward, Star
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { useTheme as useAppTheme } from '../context/ThemeContext';
 import axios from 'axios';
 
 // Gentle Animations
 const softPulse = keyframes`
-  0%, 100% { 
-    box-shadow: 0 0 15px rgba(174, 213, 129, 0.2), 0 0 30px rgba(174, 213, 129, 0.1); 
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(174, 213, 129, 0.2), 0 0 30px rgba(174, 213, 129, 0.1);
   }
-  50% { 
-    box-shadow: 0 0 20px rgba(174, 213, 129, 0.3), 0 0 40px rgba(174, 213, 129, 0.15); 
+  50% {
+    box-shadow: 0 0 20px rgba(174, 213, 129, 0.3), 0 0 40px rgba(174, 213, 129, 0.15);
   }
 `;
 
@@ -65,13 +37,13 @@ const gentleSlide = keyframes`
 `;
 
 const softMorph = keyframes`
-  0%, 100% { 
-    border-radius: 50% 50% 50% 50%; 
-    transform: rotate(0deg) scale(1); 
+  0%, 100% {
+    border-radius: 50% 50% 50% 50%;
+    transform: rotate(0deg) scale(1);
   }
-  50% { 
-    border-radius: 60% 40% 60% 40%; 
-    transform: rotate(180deg) scale(1.05); 
+  50% {
+    border-radius: 60% 40% 60% 40%;
+    transform: rotate(180deg) scale(1.05);
   }
 `;
 
@@ -81,259 +53,11 @@ const lightGradient = keyframes`
   100% { background-position: 0% 50%; }
 `;
 
-// Enhanced Styled Components with Larger Dimensions
-const BackgroundContainer = styled(Box)(({ theme }) => ({
-  minHeight: '100vh',
-  background: `
-    radial-gradient(circle at 25% 25%, rgba(174, 213, 129, 0.12) 0%, transparent 50%),
-    radial-gradient(circle at 75% 75%, rgba(255, 183, 195, 0.12) 0%, transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(179, 229, 252, 0.12) 0%, transparent 50%),
-    linear-gradient(135deg, 
-      #fafbfc 0%, 
-      #f0f5ff 25%,
-      #fef9f0 50%,
-      #f0fff6 75%,
-      #f7faff 100%
-    )
-  `,
-  backgroundSize: '300% 300%',
-  animation: `${lightGradient} 12s ease infinite`,
-  position: 'relative',
-  overflow: 'hidden',
-}));
-
-const FloatingElement = styled(Box)(({ delay, size, left, top, duration }) => ({
-  position: 'absolute',
-  left: `${left}%`,
-  top: `${top}%`,
-  width: `${size}px`,
-  height: `${size}px`,
-  background: 'linear-gradient(135deg, rgba(174, 213, 129, 0.15), rgba(179, 229, 252, 0.1))',
-  animation: `${softMorph} ${duration}s ease-in-out infinite`,
-  animationDelay: `${delay}s`,
-  backdropFilter: 'blur(2px)',
-  border: '1px solid rgba(174, 213, 129, 0.1)'
-}));
-
-const EnhancedSignupCard = styled(Paper)(({ theme }) => ({
-  background: `
-    linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.9) 0%,
-      rgba(255, 255, 255, 0.8) 50%,
-      rgba(255, 255, 255, 0.75) 100%
-    )
-  `,
-  backdropFilter: 'blur(25px) saturate(130%)',
-  WebkitBackdropFilter: 'blur(25px) saturate(130%)',
-  border: '1px solid rgba(255, 255, 255, 0.25)',
-  borderRadius: '24px',
-  padding: theme.spacing(5, 4.5),
-  position: 'relative',
-  overflow: 'hidden',
-  animation: `${gentleSlide} 0.6s cubic-bezier(0.4, 0, 0.2, 1)`,
-  boxShadow: `
-    0 12px 40px rgba(0, 0, 0, 0.06),
-    0 6px 20px rgba(0, 0, 0, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4)
-  `,
-  maxWidth: '620px',
-  width: '100%',
-  margin: '0 auto',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '3px',
-    background: 'linear-gradient(90deg, #aed581, #b3e5fc, #ffb3ba, #c8e6c9, #dcedc8)',
-    backgroundSize: '300% 300%',
-    animation: `${lightGradient} 4s ease infinite`
-  }
-}));
-
-const BrandHeader = styled(Box)(({ theme }) => ({
-  textAlign: 'center',
-  marginBottom: theme.spacing(4),
-}));
-
-const LogoIcon = styled(AutoFixHigh)(({ theme }) => ({
-  fontSize: '4.2rem',
-  background: 'linear-gradient(135deg, #81c784, #aed581, #90caf9)',
-  backgroundClip: 'text',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  animation: `${softPulse} 3s ease-in-out infinite alternate`,
-  filter: 'drop-shadow(0 4px 8px rgba(129, 199, 132, 0.2))',
-  marginBottom: theme.spacing(2)
-}));
-
-const BrandTitle = styled(Typography)(({ theme }) => ({
-  fontSize: '3.5rem',
-  fontWeight: 800,
-  background: 'linear-gradient(135deg, #81c784 0%, #aed581 25%, #90caf9 50%, #f8bbd9 75%, #b3e5fc 100%)',
-  backgroundSize: '300% 300%',
-  backgroundClip: 'text',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  animation: `${lightGradient} 6s ease infinite`,
-  marginBottom: theme.spacing(1.5),
-  letterSpacing: '-0.03em',
-  [theme.breakpoints.down('sm')]: {
-    fontSize: '2.8rem'
-  }
-}));
-
-const WelcomeSection = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(135deg, rgba(174, 213, 129, 0.08), rgba(179, 229, 252, 0.08))',
-  borderRadius: '16px',
-  padding: theme.spacing(3.5),
-  marginBottom: theme.spacing(4),
-  border: '1px solid rgba(174, 213, 129, 0.15)',
-  backdropFilter: 'blur(10px)',
-  position: 'relative',
-}));
-
-const FeatureGrid = styled(Box)(({ theme }) => ({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: theme.spacing(1.5),
-  marginTop: theme.spacing(2),
-  [theme.breakpoints.down('sm')]: {
-    gridTemplateColumns: '1fr'
-  }
-}));
-
-// ✅ FIXED: Use sx prop instead of accessing undefined theme colors
-const FeatureItem = ({ icon, text, color, ...props }) => (
-  <Box
-    sx={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 1.2,
-      padding: 1.5,
-      borderRadius: '10px',
-      background: `linear-gradient(135deg, ${color}15, ${color}08)`,
-      border: `1px solid ${color}25`,
-      backdropFilter: 'blur(5px)',
-      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-      cursor: 'pointer',
-      minHeight: '50px',
-      '&:hover': {
-        transform: 'translateY(-1px) scale(1.01)',
-        background: `linear-gradient(135deg, ${color}20, ${color}12)`,
-        boxShadow: `0 4px 12px ${color}20`
-      },
-      '& .MuiSvgIcon-root': {
-        fontSize: '1.3rem',
-        color: color
-      },
-      '& .MuiTypography-root': {
-        fontSize: '0.9rem',
-        fontWeight: 500,
-        color: 'text.primary'
-      }
-    }}
-    {...props}
-  >
-    {icon}
-    <Typography>{text}</Typography>
-  </Box>
-);
-
-const EnhancedTextField = styled(TextField)(({ theme, strength }) => ({
-  marginBottom: theme.spacing(3),
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '14px',
-    background: 'rgba(255, 255, 255, 0.85)',
-    backdropFilter: 'blur(10px)',
-    fontSize: '1.05rem',
-    fontWeight: 500,
-    minHeight: '58px',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    border: '1.5px solid transparent',
-    '& input': {
-      padding: '16px 12px',
-    },
-    position: 'relative',
-    '&:hover': {
-      background: 'rgba(255, 255, 255, 0.9)',
-      transform: 'translateY(-1px)',
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.06)',
-      borderColor: 'rgba(174, 213, 129, 0.3)'
-    },
-    '&.Mui-focused': {
-      background: 'rgba(255, 255, 255, 0.95)',
-      transform: 'translateY(-1px)',
-      boxShadow: '0 6px 20px rgba(174, 213, 129, 0.12)',
-      borderColor: '#aed581',
-      '&::after': strength && {
-        content: '""',
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        height: '3px',
-        width: `${strength}%`,
-        background: strength < 40 ? '#ffab91' : strength < 70 ? '#ffcc02' : '#81c784',
-        borderRadius: '0 0 12px 12px',
-        transition: 'width 0.3s ease'
-      }
-    }
-  },
-  '& .MuiInputLabel-root': {
-    fontWeight: 500,
-    fontSize: '1rem',
-    '&.Mui-focused': {
-      color: '#aed581'
-    }
-  }
-}));
-
-const EnhancedButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
-  borderRadius: '14px',
-  padding: '18px 44px',
-  fontSize: '1.1rem',
-  fontWeight: 700,
-  textTransform: 'none',
-  position: 'relative',
-  overflow: 'hidden',
-  minHeight: '58px',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  ...(buttonVariant === 'primary' && {
-    background: 'linear-gradient(135deg, #81c784 0%, #aed581 50%, #90caf9 100%)',
-    backgroundSize: '150% 150%',
-    color: 'white',
-    boxShadow: '0 6px 20px rgba(129, 199, 132, 0.25)',
-    '&:hover': {
-      backgroundPosition: 'right center',
-      transform: 'translateY(-2px) scale(1.01)',
-      boxShadow: '0 10px 30px rgba(129, 199, 132, 0.35)'
-    },
-    '&:active': {
-      transform: 'translateY(-1px) scale(0.98)'
-    }
-  }),
-  '&:disabled': {
-    opacity: 0.6,
-    transform: 'none'
-  }
-}));
-
-const ProgressIndicator = styled(LinearProgress)(({ theme }) => ({
-  marginBottom: theme.spacing(3),
-  height: '8px',
-  borderRadius: '4px',
-  background: 'rgba(255, 255, 255, 0.4)',
-  '& .MuiLinearProgress-bar': {
-    background: 'linear-gradient(90deg, #81c784, #aed581)',
-    borderRadius: '4px'
-  }
-}));
-
 const Signup = () => {
+  const { theme } = useAppTheme();
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   
   const [formData, setFormData] = useState({
     email: '',
@@ -350,6 +74,278 @@ const Signup = () => {
   const [mounted, setMounted] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [formProgress, setFormProgress] = useState(0);
+
+  // Theme-aware styled components (inside component to access theme)
+  const BackgroundContainer = styled(Box)(() => ({
+    minHeight: '100vh',
+    background: theme.palette.mode === 'light' 
+      ? `
+        radial-gradient(circle at 25% 25%, rgba(174, 213, 129, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(255, 183, 195, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(179, 229, 252, 0.12) 0%, transparent 50%),
+        linear-gradient(135deg, #fafbfc 0%, #f0f5ff 25%, #fef9f0 50%, #f0fff6 75%, #f7faff 100%)
+      `
+      : `
+        radial-gradient(circle at 25% 25%, rgba(174, 213, 129, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(255, 183, 195, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(179, 229, 252, 0.08) 0%, transparent 50%),
+        linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)
+      `,
+    backgroundSize: '300% 300%',
+    animation: `${lightGradient} 12s ease infinite`,
+    position: 'relative',
+    overflow: 'hidden',
+  }));
+
+  const FloatingElement = styled(Box)(({ delay, size, left, top, duration }) => ({
+    position: 'absolute',
+    left: `${left}%`,
+    top: `${top}%`,
+    width: `${size}px`,
+    height: `${size}px`,
+    background: theme.palette.mode === 'light'
+      ? 'linear-gradient(135deg, rgba(174, 213, 129, 0.15), rgba(179, 229, 252, 0.1))'
+      : 'linear-gradient(135deg, rgba(174, 213, 129, 0.1), rgba(179, 229, 252, 0.08))',
+    animation: `${softMorph} ${duration}s ease-in-out infinite`,
+    animationDelay: `${delay}s`,
+    backdropFilter: 'blur(2px)',
+    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(174, 213, 129, 0.1)' : 'rgba(174, 213, 129, 0.05)'}`
+  }));
+
+  const EnhancedSignupCard = styled(Paper)(() => ({
+    background: theme.palette.mode === 'light'
+      ? `
+        linear-gradient(135deg,
+          rgba(255, 255, 255, 0.9) 0%,
+          rgba(255, 255, 255, 0.8) 50%,
+          rgba(255, 255, 255, 0.75) 100%
+        )
+      `
+      : `
+        linear-gradient(135deg,
+          rgba(30, 41, 59, 0.9) 0%,
+          rgba(15, 23, 42, 0.8) 50%,
+          rgba(30, 41, 59, 0.75) 100%
+        )
+      `,
+    backdropFilter: 'blur(25px) saturate(130%)',
+    WebkitBackdropFilter: 'blur(25px) saturate(130%)',
+    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.1)'}`,
+    borderRadius: '24px',
+    padding: theme.spacing(5, 4.5),
+    position: 'relative',
+    overflow: 'hidden',
+    animation: `${gentleSlide} 0.6s cubic-bezier(0.4, 0, 0.2, 1)`,
+    boxShadow: theme.palette.mode === 'light'
+      ? `
+        0 12px 40px rgba(0, 0, 0, 0.06),
+        0 6px 20px rgba(0, 0, 0, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4)
+      `
+      : `
+        0 12px 40px rgba(0, 0, 0, 0.3),
+        0 6px 20px rgba(0, 0, 0, 0.2)
+      `,
+    maxWidth: '620px',
+    width: '100%',
+    margin: '0 auto',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '3px',
+      background: 'linear-gradient(90deg, #aed581, #b3e5fc, #ffb3ba, #c8e6c9, #dcedc8)',
+      backgroundSize: '300% 300%',
+      animation: `${lightGradient} 4s ease infinite`
+    }
+  }));
+
+  const BrandHeader = styled(Box)(() => ({
+    textAlign: 'center',
+    marginBottom: theme.spacing(4),
+  }));
+
+  const LogoIcon = styled(AutoFixHigh)(() => ({
+    fontSize: '4.2rem',
+    background: 'linear-gradient(135deg, #81c784, #aed581, #90caf9)',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    animation: `${softPulse} 3s ease-in-out infinite alternate`,
+    filter: 'drop-shadow(0 4px 8px rgba(129, 199, 132, 0.2))',
+    marginBottom: theme.spacing(2)
+  }));
+
+  const BrandTitle = styled(Typography)(() => ({
+    fontSize: '3.5rem',
+    fontWeight: 800,
+    background: 'linear-gradient(135deg, #81c784 0%, #aed581 25%, #90caf9 50%, #f8bbd9 75%, #b3e5fc 100%)',
+    backgroundSize: '300% 300%',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    animation: `${lightGradient} 6s ease infinite`,
+    marginBottom: theme.spacing(1.5),
+    letterSpacing: '-0.03em',
+    [theme.breakpoints.down('sm')]: {
+      fontSize: '2.8rem'
+    }
+  }));
+
+  const WelcomeSection = styled(Box)(() => ({
+    background: theme.palette.mode === 'light'
+      ? 'linear-gradient(135deg, rgba(174, 213, 129, 0.08), rgba(179, 229, 252, 0.08))'
+      : 'linear-gradient(135deg, rgba(174, 213, 129, 0.15), rgba(179, 229, 252, 0.15))',
+    borderRadius: '16px',
+    padding: theme.spacing(3.5),
+    marginBottom: theme.spacing(4),
+    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(174, 213, 129, 0.15)' : 'rgba(174, 213, 129, 0.3)'}`,
+    backdropFilter: 'blur(10px)',
+    position: 'relative',
+  }));
+
+  const FeatureGrid = styled(Box)(() => ({
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: theme.spacing(1.5),
+    marginTop: theme.spacing(2),
+    [theme.breakpoints.down('sm')]: {
+      gridTemplateColumns: '1fr'
+    }
+  }));
+
+  const FeatureItem = ({ icon, text, color, ...props }) => (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        p: 1.5,
+        borderRadius: 2,
+        background: theme.palette.mode === 'light'
+          ? 'rgba(255, 255, 255, 0.6)'
+          : 'rgba(255, 255, 255, 0.05)',
+        border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.1)'}`,
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: theme.palette.mode === 'light'
+            ? '0 4px 15px rgba(0, 0, 0, 0.08)'
+            : '0 4px 15px rgba(0, 0, 0, 0.3)'
+        }
+      }}
+      {...props}
+    >
+      {React.cloneElement(icon, { sx: { color, fontSize: '1.25rem' } })}
+      <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+        {text}
+      </Typography>
+    </Box>
+  );
+
+  const EnhancedTextField = styled(TextField)(({ strength }) => ({
+    marginBottom: theme.spacing(3),
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '14px',
+      background: theme.palette.mode === 'light' 
+        ? 'rgba(255, 255, 255, 0.85)' 
+        : 'rgba(30, 41, 59, 0.85)',
+      backdropFilter: 'blur(10px)',
+      fontSize: '1.05rem',
+      fontWeight: 500,
+      minHeight: '58px',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      border: '1.5px solid transparent',
+      color: theme.palette.text.primary,
+      '& input': {
+        padding: '16px 12px',
+        color: theme.palette.text.primary,
+      },
+      position: 'relative',
+      '&:hover': {
+        background: theme.palette.mode === 'light' 
+          ? 'rgba(255, 255, 255, 0.9)' 
+          : 'rgba(30, 41, 59, 0.9)',
+        transform: 'translateY(-1px)',
+        boxShadow: theme.palette.mode === 'light'
+          ? '0 4px 15px rgba(0, 0, 0, 0.06)'
+          : '0 4px 15px rgba(0, 0, 0, 0.3)',
+        borderColor: 'rgba(174, 213, 129, 0.3)'
+      },
+      '&.Mui-focused': {
+        background: theme.palette.mode === 'light' 
+          ? 'rgba(255, 255, 255, 0.95)' 
+          : 'rgba(30, 41, 59, 0.95)',
+        transform: 'translateY(-1px)',
+        boxShadow: '0 6px 20px rgba(174, 213, 129, 0.12)',
+        borderColor: '#aed581',
+        '&::after': strength && {
+          content: '""',
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          height: '3px',
+          width: `${strength}%`,
+          background: strength < 40 ? '#ffab91' : strength < 70 ? '#ffcc02' : '#81c784',
+          borderRadius: '0 0 12px 12px',
+          transition: 'width 0.3s ease'
+        }
+      }
+    },
+    '& .MuiInputLabel-root': {
+      fontWeight: 500,
+      fontSize: '1rem',
+      color: theme.palette.text.secondary,
+      '&.Mui-focused': {
+        color: '#aed581'
+      }
+    }
+  }));
+
+  const EnhancedButton = styled(Button)(({ variant: buttonVariant }) => ({
+    borderRadius: '14px',
+    padding: '18px 44px',
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    textTransform: 'none',
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: '58px',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    ...(buttonVariant === 'primary' && {
+      background: 'linear-gradient(135deg, #81c784 0%, #aed581 50%, #90caf9 100%)',
+      backgroundSize: '150% 150%',
+      color: 'white',
+      boxShadow: '0 6px 20px rgba(129, 199, 132, 0.25)',
+      '&:hover': {
+        backgroundPosition: 'right center',
+        transform: 'translateY(-2px) scale(1.01)',
+        boxShadow: '0 10px 30px rgba(129, 199, 132, 0.35)'
+      },
+      '&:active': {
+        transform: 'translateY(-1px) scale(0.98)'
+      }
+    }),
+    '&:disabled': {
+      opacity: 0.6,
+      transform: 'none'
+    }
+  }));
+
+  const ProgressIndicator = styled(LinearProgress)(() => ({
+    marginBottom: theme.spacing(3),
+    height: '8px',
+    borderRadius: '4px',
+    background: theme.palette.mode === 'light' 
+      ? 'rgba(255, 255, 255, 0.4)' 
+      : 'rgba(30, 41, 59, 0.4)',
+    '& .MuiLinearProgress-bar': {
+      background: 'linear-gradient(90deg, #81c784, #aed581)',
+      borderRadius: '4px'
+    }
+  }));
 
   useEffect(() => {
     setMounted(true);
@@ -382,7 +378,6 @@ const Signup = () => {
       ...formData,
       [name]: type === 'checkbox' ? checked : value
     });
-    
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
     }
@@ -390,7 +385,6 @@ const Signup = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -421,11 +415,9 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
 
     setLoading(true);
-
     try {
       const response = await axios.post('http://localhost:5000/api/auth/register', {
         email: formData.email,
@@ -456,10 +448,10 @@ const Signup = () => {
   };
 
   const features = [
-    { icon: <CheckCircle />, text: 'Share & Learn', color: '#81c784' },
-    { icon: <Groups />, text: 'Join Community', color: '#90caf9' },
-    { icon: <Security />, text: 'Privacy First', color: '#ffb74d' },
-    { icon: <Psychology />, text: 'Growth Tools', color: '#f8bbd9' }
+    { icon: <Groups />, text: 'Share & Learn', color: '#81c784' },
+    { icon: <Psychology />, text: 'Join Community', color: '#90caf9' },
+    { icon: <Shield />, text: 'Privacy First', color: '#ffb74d' },
+    { icon: <TrendingUp />, text: 'Growth Tools', color: '#f8bbd9' }
   ];
 
   return (
@@ -468,269 +460,224 @@ const Signup = () => {
       {[...Array(6)].map((_, i) => (
         <FloatingElement
           key={i}
-          delay={i * 0.5}
-          size={Math.random() * 40 + 25}
+          delay={i * 0.8}
+          size={12 + Math.random() * 8}
           left={Math.random() * 100}
           top={Math.random() * 100}
-          duration={6 + Math.random() * 4}
+          duration={8 + Math.random() * 4}
         />
       ))}
 
-      <Container maxWidth="sm" sx={{
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        minHeight: '100vh',
-        py: 3
-      }}>
-        <Fade in={mounted} timeout={1000}>
-          <EnhancedSignupCard elevation={0}>
-            <BrandHeader>
-              <LogoIcon />
-              <BrandTitle variant="h1">
-                Join FailFixes
-              </BrandTitle>
-              <Typography 
-                variant="h5" 
-                sx={{ 
-                  color: 'rgba(0, 0, 0, 0.6)',
-                  fontWeight: 500,
-                  mb: 2,
-                  fontSize: '1.3rem'
-                }}
-              >
-                Start Your Growth Journey
-              </Typography>
-            </BrandHeader>
+      <Container maxWidth="sm" sx={{ py: 6 }}>
+        <EnhancedSignupCard elevation={0}>
+          <BrandHeader>
+            <LogoIcon />
+            <BrandTitle variant="h2">
+              Join FailFixes
+            </BrandTitle>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: theme.palette.text.secondary,
+                fontWeight: 500,
+                fontSize: '1.25rem'
+              }}
+            >
+              Start Your Growth Journey
+            </Typography>
+          </BrandHeader>
 
-            <WelcomeSection>
-              <Stack direction="row" alignItems="center" spacing={2} mb={2}>
-                <Avatar sx={{ 
-                  background: 'linear-gradient(135deg, #81c784, #90caf9)',
-                  width: 50,
-                  height: 50
-                }}>
-                  <Star sx={{ fontSize: '1.5rem' }} />
-                </Avatar>
-                <Box>
-                  <Typography 
-                    variant="subtitle1" 
-                    sx={{ 
-                      fontWeight: 600, 
-                      color: '#66bb6a',
-                      mb: 0.8,
-                      fontSize: '1.1rem'
-                    }}
-                  >
-                    🚀 Join 25,000+ Growth Seekers
-                  </Typography>
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      color: 'rgba(0, 0, 0, 0.6)',
-                      lineHeight: 1.5,
-                      fontSize: '0.95rem'
-                    }}
-                  >
-                    Transform setbacks into comebacks with our supportive community.
-                  </Typography>
-                </Box>
-              </Stack>
-              
-              <FeatureGrid>
-                {features.map((feature, index) => (
-                  <FeatureItem 
-                    key={index} 
-                    icon={feature.icon}
-                    text={feature.text}
-                    color={feature.color}
-                  />
-                ))}
-              </FeatureGrid>
-            </WelcomeSection>
+          <WelcomeSection>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                mb: 1,
+                color: theme.palette.text.primary,
+                textAlign: 'center'
+              }}
+            >
+              🚀 Join 25,000+ Growth Seekers
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                color: theme.palette.text.secondary,
+                mb: 2,
+                textAlign: 'center',
+                lineHeight: 1.6
+              }}
+            >
+              Transform setbacks into comebacks with our supportive community.
+            </Typography>
+            <FeatureGrid>
+              {features.map((feature, index) => (
+                <FeatureItem
+                  key={index}
+                  icon={feature.icon}
+                  text={feature.text}
+                  color={feature.color}
+                />
+              ))}
+            </FeatureGrid>
+          </WelcomeSection>
 
+          <form onSubmit={handleSubmit}>
             <ProgressIndicator variant="determinate" value={formProgress} />
-
+            
             {errors.general && (
-              <Slide direction="down" in={!!errors.general} timeout={400}>
-                <Alert 
-                  severity="error" 
-                  sx={{ 
-                    mb: 3,
-                    borderRadius: '12px',
-                    background: 'rgba(244, 67, 54, 0.08)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(244, 67, 54, 0.2)'
-                  }}
-                >
-                  {errors.general}
-                </Alert>
-              </Slide>
+              <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>
+                {errors.general}
+              </Alert>
             )}
 
-            <Box component="form" onSubmit={handleSubmit} noValidate>
-              <EnhancedTextField
-                fullWidth
-                label="Email Address"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                error={!!errors.email}
-                helperText={errors.email}
-                required
-                placeholder="your.email@example.com"
-                autoComplete="email"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Email sx={{ color: '#81c784', fontSize: '1.3rem' }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+            <EnhancedTextField
+              fullWidth
+              type="email"
+              name="email"
+              label="Email Address"
+              value={formData.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Email sx={{ color: theme.palette.text.secondary }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
 
-              <EnhancedTextField
-                fullWidth
-                label="Username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                error={!!errors.username}
-                helperText={errors.username || 'Your unique identifier'}
-                required
-                placeholder="Choose a username"
-                autoComplete="username"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Person sx={{ color: '#90caf9', fontSize: '1.3rem' }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+            <EnhancedTextField
+              fullWidth
+              name="username"
+              label="Username"
+              value={formData.username}
+              onChange={handleChange}
+              error={!!errors.username}
+              helperText={errors.username}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Person sx={{ color: theme.palette.text.secondary }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
 
-              <EnhancedTextField
-                fullWidth
-                label="Display Name (Optional)"
-                name="displayName"
-                value={formData.displayName}
-                onChange={handleChange}
-                placeholder="How others see you"
-                helperText="Leave blank to use username"
-                autoComplete="name"
-              />
+            <EnhancedTextField
+              fullWidth
+              name="password"
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              helperText={errors.password}
+              strength={passwordStrength}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Security sx={{ color: theme.palette.text.secondary }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      sx={{
+                        color: 'rgba(0, 0, 0, 0.5)',
+                        '&:hover': {
+                          color: '#81c784',
+                          backgroundColor: 'rgba(129, 199, 132, 0.1)'
+                        }
+                      }}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
 
-              <EnhancedTextField
-                fullWidth
-                label="Password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleChange}
-                error={!!errors.password}
-                helperText={errors.password || `Strength: ${passwordStrength}%`}
-                required
-                placeholder="Create a strong password"
-                autoComplete="new-password"
-                strength={passwordStrength}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                        sx={{
-                          color: 'rgba(0, 0, 0, 0.5)',
-                          '&:hover': { 
-                            color: '#81c784',
-                            backgroundColor: 'rgba(129, 199, 132, 0.1)'
-                          }
-                        }}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
+            <EnhancedTextField
+              fullWidth
+              name="confirmPassword"
+              label="Confirm Password"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Security sx={{ color: theme.palette.text.secondary }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      edge="end"
+                      sx={{
+                        color: 'rgba(0, 0, 0, 0.5)',
+                        '&:hover': {
+                          color: '#81c784',
+                          backgroundColor: 'rgba(129, 199, 132, 0.1)'
+                        }
+                      }}
+                    >
+                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
 
-              <EnhancedTextField
-                fullWidth
-                label="Confirm Password"
-                name="confirmPassword"
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                error={!!errors.confirmPassword}
-                helperText={errors.confirmPassword}
-                required
-                placeholder="Confirm your password"
-                autoComplete="new-password"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        edge="end"
-                        sx={{
-                          color: 'rgba(0, 0, 0, 0.5)',
-                          '&:hover': { 
-                            color: '#81c784',
-                            backgroundColor: 'rgba(129, 199, 132, 0.1)'
-                          }
-                        }}
-                      >
-                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="allowAnonymous"
+                  checked={formData.allowAnonymous}
+                  onChange={handleChange}
+                  sx={{
+                    color: '#81c784',
+                    '&.Mui-checked': { color: '#81c784' }
+                  }}
+                />
+              }
+              label={
+                <Typography sx={{ color: theme.palette.text.secondary, fontSize: '0.9rem' }}>
+                  Enable anonymous sharing for privacy
+                </Typography>
+              }
+              sx={{ mb: 4 }}
+            />
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="allowAnonymous"
-                    checked={formData.allowAnonymous}
-                    onChange={handleChange}
-                    sx={{
-                      color: '#81c784',
-                      '&.Mui-checked': { color: '#81c784' }
-                    }}
-                  />
-                }
-                label={
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Shield sx={{ fontSize: '1.2rem', color: '#ffb74d' }} />
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      Enable anonymous sharing for privacy
-                    </Typography>
-                  </Stack>
-                }
-                sx={{ mb: 4 }}
-              />
+            <EnhancedButton
+              type="submit"
+              fullWidth
+              variant="primary"
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <PersonAdd />}
+              endIcon={!loading && <ArrowForward />}
+              sx={{ mb: 4 }}
+            >
+              {loading ? 'Creating Your Account...' : 'Start My Journey'}
+            </EnhancedButton>
 
-              <EnhancedButton
-                type="submit"
-                fullWidth
-                variant="primary"
-                disabled={loading || formProgress < 100}
-                startIcon={loading ? <CircularProgress size={22} color="inherit" /> : <PersonAdd />}
-                endIcon={!loading && <ArrowForward />}
-                sx={{ mb: 4 }}
-              >
-                {loading ? 'Creating Your Account...' : 'Start My Journey'}
-              </EnhancedButton>
-            </Box>
-
-            <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
-              <Typography variant="body1" color="text.secondary">
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography sx={{ color: theme.palette.text.secondary, mb: 2 }}>
                 Already have an account?
               </Typography>
-              <Link 
+              <Link
+                component="button"
+                type="button"
                 onClick={() => navigate('/login')}
-                sx={{ 
+                sx={{
                   fontWeight: 600,
                   fontSize: '1rem',
                   textDecoration: 'none',
@@ -747,9 +694,9 @@ const Signup = () => {
               >
                 Sign In →
               </Link>
-            </Stack>
-          </EnhancedSignupCard>
-        </Fade>
+            </Box>
+          </form>
+        </EnhancedSignupCard>
       </Container>
     </BackgroundContainer>
   );

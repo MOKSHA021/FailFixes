@@ -1,53 +1,21 @@
 /* eslint-disable no-console */
+
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Avatar,
-  Chip,
-  Button,
-  IconButton,
-  CircularProgress,
-  Alert,
-  Divider,
-  Stack,
-  Card,
-  CardContent,
-  TextField,
-  Collapse,
-  Fade,
-  Grow,
-  useTheme,
-  useMediaQuery
+  Container, Typography, Box, Paper, Avatar, Chip, Button,
+  IconButton, CircularProgress, Alert, Divider, Stack, Card,
+  CardContent, TextField, Collapse, Fade, Grow, useTheme, useMediaQuery
 } from '@mui/material';
 import {
-  ArrowBack,
-  Share,
-  Favorite,
-  FavoriteOutlined,
-  Comment,
-  Visibility,
-  AccessTime,
-  TrendingUp,
-  Person,
-  Category as CategoryIcon,
-  Send,
-  ExpandMore,
-  ExpandLess,
-  CheckCircle,
-  School,
-  Business,
-  Psychology,
-  FitnessCenter,
-  Computer,
-  Palette,
-  FamilyRestroom
+  ArrowBack, Share, Favorite, FavoriteOutlined, Comment,
+  Visibility, AccessTime, TrendingUp, Person, Category as CategoryIcon,
+  Send, ExpandMore, ExpandLess, CheckCircle, School, Business,
+  Psychology, FitnessCenter, Computer, Palette, FamilyRestroom
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme as useAppTheme } from '../context/ThemeContext';
 
 // Animation keyframes
 const gentleFloat = keyframes`
@@ -60,115 +28,8 @@ const softGlow = keyframes`
   50% { box-shadow: 0 0 25px rgba(129, 199, 132, 0.3); }
 `;
 
-// Styled Components
-const BackgroundContainer = styled(Box)(({ theme }) => ({
-  minHeight: '100vh',
-  background: `
-    radial-gradient(circle at 20% 20%, rgba(174, 213, 129, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(255, 183, 195, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 40% 60%, rgba(179, 229, 252, 0.15) 0%, transparent 50%),
-    linear-gradient(135deg, 
-      #f8f9ff 0%, 
-      #f0f4ff 25%,
-      #fef7f0 50%,
-      #f0fff4 75%,
-      #f5f8ff 100%
-    )
-  `,
-  paddingTop: theme.spacing(4),
-  paddingBottom: theme.spacing(8),
-}));
-
-const StoryCard = styled(Paper)(({ theme }) => ({
-  background: `
-    linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.9) 0%,
-      rgba(255, 255, 255, 0.8) 100%
-    )
-  `,
-  backdropFilter: 'blur(20px) saturate(120%)',
-  WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
-  borderRadius: '24px',
-  padding: theme.spacing(6),
-  marginBottom: theme.spacing(4),
-  position: 'relative',
-  overflow: 'hidden',
-  boxShadow: `
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 4px 16px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6)
-  `,
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '4px',
-    background: 'linear-gradient(90deg, #81c784, #aed581, #90caf9, #f8bbd9)',
-    borderRadius: '24px 24px 0 0',
-  }
-}));
-
-const ActionButton = styled(Button)(({ variant: buttonVariant, selected }) => ({
-  borderRadius: 16,
-  padding: '12px 24px',
-  fontWeight: 600,
-  textTransform: 'none',
-  transition: 'all 0.3s ease',
-  ...(buttonVariant === 'like' && {
-    background: selected 
-      ? 'linear-gradient(135deg, #e91e63, #f06292)' 
-      : 'rgba(255, 255, 255, 0.8)',
-    color: selected ? '#fff' : '#e91e63',
-    border: `2px solid ${selected ? '#e91e63' : 'rgba(233, 30, 99, 0.3)'}`,
-    '&:hover': {
-      background: selected 
-        ? 'linear-gradient(135deg, #d81b60, #e91e63)'
-        : 'linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(233, 30, 99, 0.05))',
-      transform: 'translateY(-2px) scale(1.05)',
-    }
-  }),
-  ...(buttonVariant === 'comment' && {
-    background: 'rgba(33, 150, 243, 0.1)',
-    color: '#2196f3',
-    border: '2px solid rgba(33, 150, 243, 0.3)',
-    '&:hover': {
-      background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1))',
-      transform: 'translateY(-2px) scale(1.05)',
-    }
-  })
-}));
-
-const MetadataChip = styled(Chip)(({ theme, variant: chipVariant }) => ({
-  borderRadius: 16,
-  padding: '12px 16px',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  height: 'auto',
-  ...(chipVariant === 'recovery' && {
-    background: 'linear-gradient(135deg, #81c784, #aed581)',
-    color: '#fff',
-    '& .MuiSvgIcon-root': { color: '#fff' }
-  }),
-  ...(chipVariant === 'status' && {
-    background: 'linear-gradient(135deg, #2196f3, #64b5f6)',
-    color: '#fff',
-    '& .MuiSvgIcon-root': { color: '#fff' }
-  })
-}));
-
-const CommentCard = styled(Paper)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.7)',
-  backdropFilter: 'blur(10px)',
-  borderRadius: 16,
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(2),
-  border: '1px solid rgba(255, 255, 255, 0.3)',
-}));
-
 function ViewStory() {
+  const { theme } = useAppTheme();
   const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -180,9 +41,142 @@ function ViewStory() {
 
   const { id } = useParams();
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { user, isAuthenticated } = useAuth(); // 🎯 GET USER CONTEXT
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+  const { user, isAuthenticated } = useAuth();
+
+  // Theme-aware styled components (inside component to access theme)
+  const BackgroundContainer = styled(Box)(() => ({
+    minHeight: '100vh',
+    background: theme.palette.mode === 'light' 
+      ? `
+        radial-gradient(circle at 20% 20%, rgba(174, 213, 129, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 183, 195, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(179, 229, 252, 0.15) 0%, transparent 50%),
+        linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 25%, #fef7f0 50%, #f0fff4 75%, #f5f8ff 100%)
+      `
+      : `
+        radial-gradient(circle at 20% 20%, rgba(174, 213, 129, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 183, 195, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(179, 229, 252, 0.1) 0%, transparent 50%),
+        linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)
+      `,
+    paddingTop: theme.spacing(4),
+    paddingBottom: theme.spacing(8),
+  }));
+
+  const StoryCard = styled(Paper)(() => ({
+    background: theme.palette.mode === 'light'
+      ? `
+        linear-gradient(135deg,
+          rgba(255, 255, 255, 0.9) 0%,
+          rgba(255, 255, 255, 0.8) 100%
+        )
+      `
+      : `
+        linear-gradient(135deg,
+          rgba(30, 41, 59, 0.9) 0%,
+          rgba(15, 23, 42, 0.8) 100%
+        )
+      `,
+    backdropFilter: 'blur(20px) saturate(120%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+    borderRadius: '24px',
+    padding: theme.spacing(6),
+    marginBottom: theme.spacing(4),
+    position: 'relative',
+    overflow: 'hidden',
+    color: theme.palette.text.primary,
+    boxShadow: theme.palette.mode === 'light'
+      ? `
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        0 4px 16px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6)
+      `
+      : `
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 4px 16px rgba(0, 0, 0, 0.2)
+      `,
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '4px',
+      background: 'linear-gradient(90deg, #81c784, #aed581, #90caf9, #f8bbd9)',
+      borderRadius: '24px 24px 0 0',
+    }
+  }));
+
+  const ActionButton = styled(Button)(({ variant: buttonVariant, selected }) => ({
+    borderRadius: 16,
+    padding: '12px 24px',
+    fontWeight: 600,
+    textTransform: 'none',
+    transition: 'all 0.3s ease',
+    ...(buttonVariant === 'like' && {
+      background: selected
+        ? 'linear-gradient(135deg, #e91e63, #f06292)'
+        : theme.palette.mode === 'light'
+          ? 'rgba(255, 255, 255, 0.8)'
+          : 'rgba(30, 41, 59, 0.8)',
+      color: selected ? '#fff' : '#e91e63',
+      border: `2px solid ${selected ? '#e91e63' : 'rgba(233, 30, 99, 0.3)'}`,
+      '&:hover': {
+        background: selected
+          ? 'linear-gradient(135deg, #d81b60, #e91e63)'
+          : theme.palette.mode === 'light'
+            ? 'linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(233, 30, 99, 0.05))'
+            : 'linear-gradient(135deg, rgba(233, 30, 99, 0.2), rgba(233, 30, 99, 0.15))',
+        transform: 'translateY(-2px) scale(1.05)',
+      }
+    }),
+    ...(buttonVariant === 'comment' && {
+      background: theme.palette.mode === 'light'
+        ? 'rgba(33, 150, 243, 0.1)'
+        : 'rgba(33, 150, 243, 0.2)',
+      color: '#2196f3',
+      border: '2px solid rgba(33, 150, 243, 0.3)',
+      '&:hover': {
+        background: theme.palette.mode === 'light'
+          ? 'linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1))'
+          : 'linear-gradient(135deg, rgba(33, 150, 243, 0.3), rgba(33, 150, 243, 0.2))',
+        transform: 'translateY(-2px) scale(1.05)',
+      }
+    })
+  }));
+
+  const MetadataChip = styled(Chip)(({ variant: chipVariant }) => ({
+    borderRadius: 16,
+    padding: '12px 16px',
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    height: 'auto',
+    ...(chipVariant === 'recovery' && {
+      background: 'linear-gradient(135deg, #81c784, #aed581)',
+      color: '#fff',
+      '& .MuiSvgIcon-root': { color: '#fff' }
+    }),
+    ...(chipVariant === 'status' && {
+      background: 'linear-gradient(135deg, #2196f3, #64b5f6)',
+      color: '#fff',
+      '& .MuiSvgIcon-root': { color: '#fff' }
+    })
+  }));
+
+  const CommentCard = styled(Paper)(() => ({
+    background: theme.palette.mode === 'light'
+      ? 'rgba(255, 255, 255, 0.7)'
+      : 'rgba(30, 41, 59, 0.7)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 16,
+    padding: theme.spacing(3),
+    marginBottom: theme.spacing(2),
+    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+    color: theme.palette.text.primary,
+  }));
 
   const categories = [
     { value: 'business', label: 'Business & Startup', icon: Business, color: '#81c784' },
@@ -195,10 +189,10 @@ function ViewStory() {
     { value: 'creative', label: 'Creative Arts', icon: Palette, color: '#ffb74d' }
   ];
 
-  // 🎯 FIXED: Get category info function
+  // Get category info function
   const getCategoryInfo = (categoryValue) => {
-    return categories.find(cat => cat.value === categoryValue) || 
-           { label: categoryValue, icon: CategoryIcon, color: '#81c784' };
+    return categories.find(cat => cat.value === categoryValue) ||
+      { label: categoryValue, icon: CategoryIcon, color: '#81c784' };
   };
 
   // Fetch story data
@@ -207,7 +201,7 @@ function ViewStory() {
       try {
         setLoading(true);
         setError('');
-
+        
         const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers.Authorization = `Bearer ${token}`;
@@ -233,11 +227,10 @@ function ViewStory() {
     fetchStory();
   }, [id]);
 
-  // 🎯 FIXED: Handle like toggle - ALLOW ALL USERS TO LIKE
+  // Handle like toggle
   const handleLike = async () => {
     if (likeLoading) return;
 
-    // Require authentication to like
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -251,7 +244,6 @@ function ViewStory() {
 
     try {
       setLikeLoading(true);
-
       const response = await fetch(`http://localhost:5000/api/stories/${id}/like`, {
         method: 'PATCH',
         headers: {
@@ -261,7 +253,6 @@ function ViewStory() {
       });
 
       const data = await response.json();
-
       if (response.ok) {
         setStory(prev => ({
           ...prev,
@@ -280,11 +271,10 @@ function ViewStory() {
     }
   };
 
-  // 🎯 FIXED: Handle comment submission - ALLOW ALL USERS TO COMMENT
+  // Handle comment submission
   const handleComment = async () => {
     if (!commentText.trim() || commentLoading) return;
 
-    // Require authentication to comment
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -298,7 +288,6 @@ function ViewStory() {
 
     try {
       setCommentLoading(true);
-
       const response = await fetch(`http://localhost:5000/api/stories/${id}/comment`, {
         method: 'POST',
         headers: {
@@ -309,7 +298,6 @@ function ViewStory() {
       });
 
       const data = await response.json();
-
       if (response.ok) {
         setStory(prev => ({
           ...prev,
@@ -332,9 +320,14 @@ function ViewStory() {
   if (loading) {
     return (
       <BackgroundContainer>
-        <Container maxWidth="md" sx={{ py: 8 }}>
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-            <CircularProgress size={60} sx={{ color: '#81c784' }} />
+        <Container maxWidth="lg" sx={{ py: 8 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+            <Box sx={{ textAlign: 'center' }}>
+              <CircularProgress size={60} sx={{ color: '#81c784', mb: 3 }} />
+              <Typography variant="h6" sx={{ color: theme.palette.text.secondary }}>
+                Loading your inspiring story...
+              </Typography>
+            </Box>
           </Box>
         </Container>
       </BackgroundContainer>
@@ -344,119 +337,123 @@ function ViewStory() {
   if (error) {
     return (
       <BackgroundContainer>
-        <Container maxWidth="md" sx={{ py: 8 }}>
-          <Alert severity="error" sx={{ borderRadius: 3, mb: 4 }}>
-            {error}
-          </Alert>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBack />}
-            onClick={() => navigate('/browse')}
-            sx={{ borderRadius: 2 }}
-          >
-            Back to Stories
-          </Button>
+        <Container maxWidth="lg" sx={{ py: 8 }}>
+          <StoryCard>
+            <Alert severity="error" sx={{ mb: 4, borderRadius: '16px' }}>
+              {error}
+            </Alert>
+            <Button
+              variant="contained"
+              onClick={() => navigate('/browse')}
+              sx={{ 
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #81c784, #aed581)',
+                '&:hover': { background: 'linear-gradient(135deg, #66bb6a, #81c784)' }
+              }}
+            >
+              Back to Stories
+            </Button>
+          </StoryCard>
         </Container>
       </BackgroundContainer>
     );
   }
 
-  // 🎯 FIXED: Extract category info before JSX
+  if (!story) return null;
+
+  // Extract category info before JSX
   const categoryInfo = getCategoryInfo(story.category);
   const CategoryIconComponent = categoryInfo.icon;
 
   return (
     <BackgroundContainer>
-      <Container maxWidth="md">
+      <Container maxWidth="lg">
         {/* Header Actions */}
-        <Fade in={mounted} timeout={600}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-            <Button
-              variant="outlined"
-              startIcon={<ArrowBack />}
-              onClick={() => navigate('/browse')}
-              sx={{ 
-                borderRadius: 2, 
-                color: '#81c784', 
-                borderColor: '#81c784',
-                '&:hover': { borderColor: '#66bb6a', backgroundColor: 'rgba(129, 199, 132, 0.1)' }
-              }}
-            >
-              Back to Stories
-            </Button>
-            <IconButton 
-              sx={{ 
-                color: '#81c784',
-                '&:hover': { backgroundColor: 'rgba(129, 199, 132, 0.1)' }
-              }}
-            >
-              <Share />
-            </IconButton>
-          </Box>
-        </Fade>
+        <Button
+          startIcon={<ArrowBack />}
+          variant="outlined"
+          onClick={() => navigate('/browse')}
+          sx={{
+            mb: 4,
+            borderRadius: 2,
+            color: '#81c784',
+            borderColor: '#81c784',
+            background: theme.palette.mode === 'light' 
+              ? 'rgba(255, 255, 255, 0.8)' 
+              : 'rgba(30, 41, 59, 0.8)',
+            '&:hover': { 
+              borderColor: '#66bb6a', 
+              backgroundColor: theme.palette.mode === 'light' 
+                ? 'rgba(129, 199, 132, 0.1)' 
+                : 'rgba(129, 199, 132, 0.2)'
+            }
+          }}
+        >
+          Back to Stories
+        </Button>
 
         {/* Main Story Card */}
-        <Grow in={mounted} timeout={800}>
-          <StoryCard>
-            {/* Category Badge */}
-            {story.category && (
-              <Box mb={3}>
-                <Chip
-                  icon={<CategoryIconComponent />}
-                  label={categoryInfo.label}
-                  sx={{
-                    background: 'linear-gradient(135deg, #81c784, #aed581)',
-                    color: '#fff',
-                    fontWeight: 600,
-                    padding: '8px 12px',
-                    '& .MuiSvgIcon-root': { color: '#fff' }
-                  }}
-                />
-              </Box>
-            )}
-
-            {/* Story Title */}
-            <Typography 
-              variant={isMobile ? "h4" : "h3"}
-              sx={{ 
-                fontWeight: 800, 
+        <StoryCard>
+          {/* Category Badge */}
+          {story.category && (
+            <Chip
+              icon={<CategoryIconComponent />}
+              label={categoryInfo.label}
+              sx={{
+                background: 'linear-gradient(135deg, #81c784, #aed581)',
+                color: '#fff',
+                fontWeight: 600,
+                padding: '8px 12px',
                 mb: 4,
-                color: '#2e7d32',
-                lineHeight: 1.2
+                '& .MuiSvgIcon-root': { color: '#fff' }
+              }}
+            />
+          )}
+
+          {/* Story Title */}
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 900,
+              mb: 4,
+              color: theme.palette.text.primary,
+              lineHeight: 1.2,
+              fontSize: { xs: '2rem', md: '2.5rem', lg: '3rem' }
+            }}
+          >
+            {story.title}
+          </Typography>
+
+          {/* Author Info */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+            <Avatar 
+              sx={{ 
+                background: 'linear-gradient(135deg, #81c784, #aed581)', 
+                color: 'white', 
+                fontWeight: 700,
+                width: 48,
+                height: 48
               }}
             >
-              {story.title}
-            </Typography>
-
-            {/* Author Info */}
-            <Box display="flex" alignItems="center" mb={4}>
-              <Avatar
-                sx={{
-                  width: 56,
-                  height: 56,
-                  background: 'linear-gradient(135deg, #81c784, #aed581)',
-                  mr: 2,
-                  animation: `${gentleFloat} 4s ease-in-out infinite`
-                }}
-              >
-                <Person sx={{ fontSize: '1.8rem' }} />
-              </Avatar>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                  {story.author?.name || 'Anonymous'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  @{story.author?.username || 'user'} • {story.readTime || 1} min read
-                </Typography>
-              </Box>
+              {(story.author?.name || 'Anonymous').charAt(0)}
+            </Avatar>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+                {story.author?.name || 'Anonymous'}
+              </Typography>
+              <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                @{story.author?.username || 'user'} • {story.readTime || 1} min read
+              </Typography>
             </Box>
+          </Box>
 
-            {/* 🎯 Recovery Time and Status Display */}
-            <Box mb={4}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
+          {/* Recovery Time and Status Display */}
+          {(story.metadata?.recoveryTime || story.metadata?.currentStatus) && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, fontWeight: 700 }}>
                 Recovery Journey
               </Typography>
-              <Stack direction={isMobile ? 'column' : 'row'} spacing={2} mb={2}>
+              <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
                 {story.metadata?.recoveryTime && (
                   <MetadataChip
                     variant="recovery"
@@ -473,181 +470,172 @@ function ViewStory() {
                 )}
               </Stack>
               {story.metadata?.currentStatus === 'thriving' && (
-                <Box display="flex" alignItems="center" mt={1}>
-                  <CheckCircle sx={{ color: '#4caf50', fontSize: 20, mr: 1 }} />
-                  <Typography variant="body2" sx={{ color: '#4caf50', fontWeight: 600 }}>
-                    Success Story - Fully Recovered & Thriving
-                  </Typography>
-                </Box>
+                <Chip
+                  icon={<CheckCircle />}
+                  label="Success Story - Fully Recovered & Thriving"
+                  sx={{
+                    mt: 2,
+                    background: 'linear-gradient(135deg, #4caf50, #81c784)',
+                    color: 'white',
+                    fontWeight: 600
+                  }}
+                />
               )}
             </Box>
+          )}
 
-            {/* Story Content */}
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                whiteSpace: 'pre-line',
-                lineHeight: 1.8,
-                fontSize: '1.1rem',
-                mb: 4,
-                color: 'text.primary'
+          {/* Story Content */}
+          <Typography
+            variant="body1"
+            sx={{
+              fontSize: '1.125rem',
+              lineHeight: 1.8,
+              color: theme.palette.text.primary,
+              mb: 4,
+              whiteSpace: 'pre-line'
+            }}
+          >
+            {story.content}
+          </Typography>
+
+          {/* Key Lessons */}
+          {story.metadata?.keyLessons && story.metadata.keyLessons.length > 0 && (
+            <Paper
+              sx={{
+                p: 4,
+                borderRadius: '16px',
+                background: theme.palette.mode === 'light'
+                  ? 'linear-gradient(135deg, rgba(129, 199, 132, 0.05), rgba(144, 202, 249, 0.05))'
+                  : 'linear-gradient(135deg, rgba(129, 199, 132, 0.15), rgba(144, 202, 249, 0.15))',
+                border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(129, 199, 132, 0.2)' : 'rgba(129, 199, 132, 0.3)'}`,
+                mb: 4
               }}
             >
-              {story.content}
-            </Typography>
-
-            {/* Key Lessons */}
-            {story.metadata?.keyLessons && story.metadata.keyLessons.length > 0 && (
-              <Box mb={4}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
-                  Key Lessons Learned
-                </Typography>
-                <Box
-                  sx={{
-                    background: 'rgba(129, 199, 132, 0.1)',
-                    borderRadius: 3,
-                    padding: 3,
-                    borderLeft: '4px solid #81c784'
-                  }}
-                >
-                  {story.metadata.keyLessons.map((lesson, index) => (
-                    <Box key={index} display="flex" alignItems="flex-start" mb={1.5}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          background: '#81c784',
-                          color: '#fff',
-                          borderRadius: '50%',
-                          width: 24,
-                          height: 24,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 700,
-                          mr: 2,
-                          mt: 0.5,
-                          fontSize: '0.75rem'
-                        }}
-                      >
-                        {index + 1}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500, lineHeight: 1.6 }}>
-                        {lesson}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {/* Tags */}
-            {story.tags && story.tags.length > 0 && (
-              <Box mb={4}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
-                  Tags
-                </Typography>
-                <Box display="flex" flexWrap="wrap" gap={1}>
-                  {story.tags.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={`#${tag}`}
-                      variant="outlined"
-                      sx={{
-                        borderColor: '#81c784',
-                        color: '#81c784',
-                        fontWeight: 600,
-                        '&:hover': { backgroundColor: 'rgba(129, 199, 132, 0.1)' }
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            <Divider sx={{ mb: 4 }} />
-
-            {/* 🎯 UPDATED: Reduced Icon Sizes in Stats */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-              <Stack direction="row" spacing={3}>
-                <Box display="flex" alignItems="center">
-                  <Visibility sx={{ fontSize: 18, color: '#81c784', mr: 1 }} /> {/* Reduced from 20 */}
-                  <Typography variant="body2" fontWeight="600">
-                    {story.stats?.views || 0} views
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center">
-                  <Favorite sx={{ fontSize: 18, color: '#e91e63', mr: 1 }} /> {/* Reduced from 20 */}
-                  <Typography variant="body2" fontWeight="600">
-                    {story.stats?.likes || 0} likes
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center">
-                  <Comment sx={{ fontSize: 18, color: '#2196f3', mr: 1 }} /> {/* Reduced from 20 */}
-                  <Typography variant="body2" fontWeight="600">
-                    {story.stats?.comments || 0} comments
-                  </Typography>
-                </Box>
-              </Stack>
-            </Box>
-
-            {/* 🎯 FIXED: Action Buttons - Available for ALL Users */}
-            <Stack direction="row" spacing={2} justifyContent="center">
-              <ActionButton
-                variant="like"
-                selected={story.isLiked}
-                startIcon={
-                  likeLoading ? (
-                    <CircularProgress size={18} color="inherit" />
-                  ) : story.isLiked ? (
-                    <Favorite />
-                  ) : (
-                    <FavoriteOutlined />
-                  )
-                }
-                onClick={handleLike}
-                disabled={likeLoading || !isAuthenticated}
-              >
-                {story.isLiked ? 'Liked' : 'Like'} ({story.stats?.likes || 0})
-              </ActionButton>
-
-              <ActionButton
-                variant="comment"
-                startIcon={showComments ? <ExpandLess /> : <ExpandMore />}
-                onClick={() => setShowComments(!showComments)}
-              >
-                Comments ({story.stats?.comments || 0})
-              </ActionButton>
-            </Stack>
-
-            {/* Authentication Notice */}
-            {!isAuthenticated && (
-              <Box textAlign="center" mt={3}>
-                <Typography variant="body2" color="text.secondary">
-                  <Button
-                    variant="text" 
-                    onClick={() => navigate('/login')}
-                    sx={{ textTransform: 'none', color: '#81c784' }}
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: theme.palette.text.primary }}>
+                Key Lessons Learned
+              </Typography>
+              {story.metadata.keyLessons.map((lesson, index) => (
+                <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      background: 'linear-gradient(135deg, #81c784, #aed581)',
+                      fontSize: '0.875rem',
+                      fontWeight: 700
+                    }}
                   >
-                    Sign in
-                  </Button>
-                  {' '}to like and comment on stories
-                </Typography>
-              </Box>
-            )}
-          </StoryCard>
-        </Grow>
+                    {index + 1}
+                  </Avatar>
+                  <Typography variant="body1" sx={{ color: theme.palette.text.primary, flex: 1 }}>
+                    {lesson}
+                  </Typography>
+                </Box>
+              ))}
+            </Paper>
+          )}
 
-        {/* Comments Section */}
-        <Collapse in={showComments}>
-          <Fade in={showComments}>
-            <StoryCard>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#2e7d32' }}>
+          {/* Tags */}
+          {story.tags && story.tags.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, fontWeight: 700 }}>
+                Tags
+              </Typography>
+              {story.tags.map((tag, index) => (
+                <Chip
+                  key={index}
+                  label={tag}
+                  sx={{
+                    mr: 1,
+                    mb: 1,
+                    background: theme.palette.mode === 'light'
+                      ? 'linear-gradient(135deg, rgba(129, 199, 132, 0.1), rgba(144, 202, 249, 0.1))'
+                      : 'linear-gradient(135deg, rgba(129, 199, 132, 0.2), rgba(144, 202, 249, 0.2))',
+                    color: theme.palette.text.primary,
+                    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(129, 199, 132, 0.3)' : 'rgba(129, 199, 132, 0.4)'}`,
+                    fontWeight: 600
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+
+          {/* Stats */}
+          <Divider sx={{ my: 4 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, mb: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Visibility sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
+              <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                {story.stats?.views || 0} views
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Favorite sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
+              <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                {story.stats?.likes || 0} likes
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Comment sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
+              <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                {story.stats?.comments || 0} comments
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
+            <ActionButton
+              variant="like"
+              selected={story.isLiked}
+              startIcon={story.isLiked ? <Favorite /> : <FavoriteOutlined />}
+              onClick={handleLike}
+              disabled={likeLoading || !isAuthenticated}
+            >
+              {story.isLiked ? 'Liked' : 'Like'} ({story.stats?.likes || 0})
+            </ActionButton>
+            <ActionButton
+              variant="comment"
+              startIcon={showComments ? <ExpandLess /> : <ExpandMore />}
+              onClick={() => setShowComments(!showComments)}
+            >
+              Comments ({story.stats?.comments || 0})
+            </ActionButton>
+          </Box>
+
+          {/* Authentication Notice */}
+          {!isAuthenticated && (
+            <Alert
+              severity="info"
+              sx={{
+                borderRadius: '12px',
+                mb: 4,
+                background: theme.palette.mode === 'light'
+                  ? 'rgba(129, 199, 132, 0.1)'
+                  : 'rgba(129, 199, 132, 0.2)',
+                border: '1px solid rgba(129, 199, 132, 0.3)'
+              }}
+            >
+              <Button
+                onClick={() => navigate('/login')}
+                sx={{ textTransform: 'none', color: '#81c784' }}
+              >
+                Sign in
+              </Button>
+              {' '}to like and comment on stories
+            </Alert>
+          )}
+
+          {/* Comments Section */}
+          <Collapse in={showComments}>
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" sx={{ mb: 3, color: theme.palette.text.primary, fontWeight: 700 }}>
                 Comments ({story.stats?.comments || 0})
               </Typography>
 
               {/* Add Comment Form - Only for authenticated users */}
               {isAuthenticated ? (
-                <Box mb={4}>
+                <Box sx={{ mb: 4 }}>
                   <TextField
                     fullWidth
                     multiline
@@ -659,38 +647,42 @@ function ViewStory() {
                       mb: 2,
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 3,
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)'
+                        backgroundColor: theme.palette.mode === 'light'
+                          ? 'rgba(255, 255, 255, 0.8)'
+                          : 'rgba(30, 41, 59, 0.8)',
+                        color: theme.palette.text.primary,
+                        '& input': {
+                          color: theme.palette.text.primary
+                        },
+                        '& textarea': {
+                          color: theme.palette.text.primary
+                        }
                       }
                     }}
                   />
-                  <Box display="flex" justifyContent="flex-end">
-                    <Button
-                      variant="contained"
-                      startIcon={commentLoading ? <CircularProgress size={18} color="inherit" /> : <Send />}
-                      onClick={handleComment}
-                      disabled={!commentText.trim() || commentLoading}
-                      sx={{
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, #81c784, #aed581)',
-                        '&:hover': { background: 'linear-gradient(135deg, #66bb6a, #81c784)' }
-                      }}
-                    >
-                      {commentLoading ? 'Posting...' : 'Post Comment'}
-                    </Button>
-                  </Box>
+                  <Button
+                    variant="contained"
+                    startIcon={commentLoading ? <CircularProgress size={18} color="inherit" /> : <Send />}
+                    onClick={handleComment}
+                    disabled={!commentText.trim() || commentLoading}
+                    sx={{
+                      borderRadius: 2,
+                      background: 'linear-gradient(135deg, #81c784, #aed581)',
+                      '&:hover': { background: 'linear-gradient(135deg, #66bb6a, #81c784)' }
+                    }}
+                  >
+                    {commentLoading ? 'Posting...' : 'Post Comment'}
+                  </Button>
                 </Box>
               ) : (
-                <Box mb={4} textAlign="center" py={2} sx={{ background: 'rgba(129, 199, 132, 0.1)', borderRadius: 2 }}>
-                  <Typography variant="body1" color="text.secondary">
-                    <Button
-                      variant="text" 
-                      onClick={() => navigate('/login')}
-                      sx={{ textTransform: 'none', color: '#81c784', fontWeight: 600 }}
-                    >
-                      Sign in
-                    </Button>
-                    {' '}to join the conversation
-                  </Typography>
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Button
+                    onClick={() => navigate('/login')}
+                    sx={{ textTransform: 'none', color: '#81c784', fontWeight: 600 }}
+                  >
+                    Sign in
+                  </Button>
+                  {' '}to join the conversation
                 </Box>
               )}
 
@@ -698,32 +690,27 @@ function ViewStory() {
               {story.comments && story.comments.length > 0 ? (
                 story.comments.map((comment, index) => (
                   <CommentCard key={index}>
-                    <Box display="flex" alignItems="flex-start" gap={2}>
-                      <Avatar sx={{ width: 40, height: 40, background: '#81c784' }}>
-                        <Person />
-                      </Avatar>
-                      <Box flex={1}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                          {comment.user?.name || 'Anonymous'}
-                        </Typography>
-                        <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-                          {comment.content}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                          {new Date(comment.createdAt).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                    </Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: theme.palette.text.primary, mb: 1 }}>
+                      {comment.user?.name || 'Anonymous'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: theme.palette.text.primary, mb: 2, lineHeight: 1.6 }}>
+                      {comment.content}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                      {new Date(comment.createdAt).toLocaleDateString()}
+                    </Typography>
                   </CommentCard>
                 ))
               ) : (
-                <Typography variant="body2" color="text.secondary" textAlign="center" py={4}>
-                  No comments yet. Be the first to share your thoughts!
-                </Typography>
+                <Box sx={{ textAlign: 'center', py: 8 }}>
+                  <Typography variant="body1" sx={{ color: theme.palette.text.secondary }}>
+                    No comments yet. Be the first to share your thoughts!
+                  </Typography>
+                </Box>
               )}
-            </StoryCard>
-          </Fade>
-        </Collapse>
+            </Box>
+          </Collapse>
+        </StoryCard>
       </Container>
     </BackgroundContainer>
   );
