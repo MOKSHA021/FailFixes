@@ -14,11 +14,9 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ff_token') || localStorage.getItem('token');
-    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
     return config;
   },
   (error) => {
@@ -44,9 +42,9 @@ api.interceptors.response.use(
 export const storiesAPI = {
   getAllStories: (params = {}) => {
     const queryParams = new URLSearchParams();
-    Object.keys(params).forEach(key => {
-      if (params[key]) {
-        queryParams.append(key, params[key]);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
       }
     });
     return api.get(`/stories?${queryParams.toString()}`);
@@ -54,16 +52,21 @@ export const storiesAPI = {
 
   getStories: (params = {}) => {
     const queryParams = new URLSearchParams();
-    Object.keys(params).forEach(key => {
-      if (params[key]) {
-        queryParams.append(key, params[key]);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
       }
     });
     return api.get(`/stories?${queryParams.toString()}`);
   },
 
   getStoriesByAuthor: (authorUsername, params = {}) => {
-    const queryParams = new URLSearchParams(params);
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
     return api.get(`/stories/author/${authorUsername}?${queryParams.toString()}`);
   },
 
@@ -74,7 +77,12 @@ export const storiesAPI = {
   likeStory: (id) => api.patch(`/stories/${id}/like`),
   addComment: (id, commentData) => api.post(`/stories/${id}/comment`, commentData),
   getComments: (id, params = {}) => {
-    const queryParams = new URLSearchParams(params);
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
     return api.get(`/stories/${id}/comments?${queryParams.toString()}`);
   }
 };
@@ -110,7 +118,12 @@ export const dashboardAPI = {
 
   getUserStats: () => api.get('/users/me/stats'),
   getUserStories: (params = {}) => {
-    const queryParams = new URLSearchParams(params);
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
     return api.get(`/users/me/stories?${queryParams.toString()}`);
   },
   getUserAnalytics: () => api.get('/users/me/analytics'),
@@ -136,19 +149,34 @@ export const userAPI = {
   },
 
   getUserFollowers: (username, params = {}) => {
-    const queryParams = new URLSearchParams(params);
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
     return api.get(`/users/${username}/followers?${queryParams.toString()}`);
   },
 
   getUserFollowing: (username, params = {}) => {
-    const queryParams = new URLSearchParams(params);
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
     return api.get(`/users/${username}/following?${queryParams.toString()}`);
   },
 
   getUserFeed: async (params = {}) => {
     try {
       console.log('📡 Fetching user feed via API with params:', params);
-      const queryParams = new URLSearchParams(params);
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, value);
+        }
+      });
       const response = await api.get(`/users/me/feed?${queryParams.toString()}`);
       console.log('✅ Feed API response:', {
         success: response.data.success,
@@ -163,7 +191,18 @@ export const userAPI = {
     }
   },
 
-  getSuggestedUsers: () => api.get('/users/suggested')
+  getSuggestedUsers: () => api.get('/users/suggested'),
+
+  // ✅ ADD SEARCH USERS METHOD
+  searchUsers: (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
+    return api.get(`/users/search?${queryParams.toString()}`);
+  }
 };
 
 export const usersAPI = {
@@ -173,7 +212,25 @@ export const usersAPI = {
   getUserFollowing: userAPI.getUserFollowing,
   getUserFeed: userAPI.getUserFeed,
   getSuggestedUsers: userAPI.getSuggestedUsers,
-  updateProfile: (profileData) => api.put('/users/me/profile', profileData)
+  updateProfile: (profileData) => api.put('/users/me/profile', profileData),
+  searchUsers: userAPI.searchUsers // ✅ ADD THIS
+};
+
+// ✅ ADD CHAT API
+export const chatAPI = {
+  getChats: () => api.get('/chats'),
+  
+  createDirectChat: (userId) => api.post('/chats/direct', { userId }),
+  
+  getChatMessages: (chatId, params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
+    return api.get(`/chats/${chatId}/messages?${queryParams.toString()}`);
+  }
 };
 
 export const analyticsAPI = {
