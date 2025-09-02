@@ -43,11 +43,13 @@ import {
   FitnessCenter,
   Computer,
   Palette,
-  FamilyRestroom
+  FamilyRestroom,
+  Chat // ✅ ADD CHAT ICON
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { chatAPI } from '../services/api'; // ✅ ADD CHAT API
 
 // Animation keyframes
 const gentleFloat = keyframes`
@@ -138,6 +140,16 @@ const ActionButton = styled(Button)(({ variant: buttonVariant, selected }) => ({
       background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1))',
       transform: 'translateY(-2px) scale(1.05)',
     }
+  }),
+  // ✅ ADD MESSAGE BUTTON VARIANT
+  ...(buttonVariant === 'message' && {
+    background: 'linear-gradient(135deg, #81c784, #aed581)',
+    color: '#fff',
+    border: '2px solid #81c784',
+    '&:hover': {
+      background: 'linear-gradient(135deg, #66bb6a, #81c784)',
+      transform: 'translateY(-2px) scale(1.05)',
+    }
   })
 }));
 
@@ -176,13 +188,14 @@ function ViewStory() {
   const [commentText, setCommentText] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [messageLoading, setMessageLoading] = useState(false); // ✅ ADD MESSAGE LOADING STATE
   const [mounted, setMounted] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { user, isAuthenticated } = useAuth(); // 🎯 GET USER CONTEXT
+  const { user, isAuthenticated } = useAuth();
 
   const categories = [
     { value: 'business', label: 'Business & Startup', icon: Business, color: '#81c784' },
@@ -195,10 +208,48 @@ function ViewStory() {
     { value: 'creative', label: 'Creative Arts', icon: Palette, color: '#ffb74d' }
   ];
 
-  // 🎯 FIXED: Get category info function
   const getCategoryInfo = (categoryValue) => {
     return categories.find(cat => cat.value === categoryValue) || 
            { label: categoryValue, icon: CategoryIcon, color: '#81c784' };
+  };
+
+  // ✅ ADD MESSAGE HANDLER FUNCTION
+  const handleMessage = async () => {
+    // Check authentication
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    // Check if trying to message themselves
+    if (user._id === story.author?._id) {
+      alert('You cannot send a message to yourself!');
+      return;
+    }
+
+    try {
+      setMessageLoading(true);
+
+      // Create or get existing direct chat with story author
+      const response = await chatAPI.createDirectChat(story.author._id);
+
+      if (response.data.success) {
+        // Navigate to chat page with the created/existing chat
+        navigate('/chat', { 
+          state: { 
+            selectedChatId: response.data.chat._id,
+            authorName: story.author.name 
+          } 
+        });
+      } else {
+        throw new Error(response.data.message || 'Failed to create chat');
+      }
+    } catch (error) {
+      console.error('❌ Message error:', error);
+      alert('Error starting conversation. Please try again.');
+    } finally {
+      setMessageLoading(false);
+    }
   };
 
   // Fetch story data
@@ -233,11 +284,9 @@ function ViewStory() {
     fetchStory();
   }, [id]);
 
-  // 🎯 FIXED: Handle like toggle - ALLOW ALL USERS TO LIKE
   const handleLike = async () => {
     if (likeLoading) return;
 
-    // Require authentication to like
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -280,11 +329,9 @@ function ViewStory() {
     }
   };
 
-  // 🎯 FIXED: Handle comment submission - ALLOW ALL USERS TO COMMENT
   const handleComment = async () => {
     if (!commentText.trim() || commentLoading) return;
 
-    // Require authentication to comment
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -361,7 +408,6 @@ function ViewStory() {
     );
   }
 
-  // 🎯 FIXED: Extract category info before JSX
   const categoryInfo = getCategoryInfo(story.category);
   const CategoryIconComponent = categoryInfo.icon;
 
@@ -428,30 +474,61 @@ function ViewStory() {
               {story.title}
             </Typography>
 
-            {/* Author Info */}
-            <Box display="flex" alignItems="center" mb={4}>
-              <Avatar
-                sx={{
-                  width: 56,
-                  height: 56,
-                  background: 'linear-gradient(135deg, #81c784, #aed581)',
-                  mr: 2,
-                  animation: `${gentleFloat} 4s ease-in-out infinite`
-                }}
-              >
-                <Person sx={{ fontSize: '1.8rem' }} />
-              </Avatar>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                  {story.author?.name || 'Anonymous'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  @{story.author?.username || 'user'} • {story.readTime || 1} min read
-                </Typography>
+            {/* ✅ UPDATED: Author Info with Message Button */}
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={4}>
+              <Box display="flex" alignItems="center">
+                <Avatar
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    background: 'linear-gradient(135deg, #81c784, #aed581)',
+                    mr: 2,
+                    animation: `${gentleFloat} 4s ease-in-out infinite`
+                  }}
+                >
+                  <Person sx={{ fontSize: '1.8rem' }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {story.author?.name || 'Anonymous'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    @{story.author?.username || 'user'} • {story.readTime || 1} min read
+                  </Typography>
+                </Box>
               </Box>
+
+              {/* ✅ MESSAGE BUTTON - Only show if not own story and authenticated */}
+              {isAuthenticated && user._id !== story.author?._id && (
+                <ActionButton
+                  variant="message"
+                  startIcon={messageLoading ? <CircularProgress size={18} color="inherit" /> : <Chat />}
+                  onClick={handleMessage}
+                  disabled={messageLoading}
+                  sx={{ minWidth: 140 }}
+                >
+                  {messageLoading ? 'Starting...' : 'Message'}
+                </ActionButton>
+              )}
+
+              {/* Show login prompt for unauthenticated users */}
+              {!isAuthenticated && (
+                <Button
+                  variant="outlined"
+                  startIcon={<Chat />}
+                  onClick={() => navigate('/login')}
+                  sx={{
+                    borderColor: '#81c784',
+                    color: '#81c784',
+                    '&:hover': { borderColor: '#66bb6a', backgroundColor: 'rgba(129, 199, 132, 0.1)' }
+                  }}
+                >
+                  Sign in to Message
+                </Button>
+              )}
             </Box>
 
-            {/* 🎯 Recovery Time and Status Display */}
+            {/* Recovery Time and Status Display */}
             <Box mb={4}>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2e7d32' }}>
                 Recovery Journey
@@ -566,23 +643,23 @@ function ViewStory() {
 
             <Divider sx={{ mb: 4 }} />
 
-            {/* 🎯 UPDATED: Reduced Icon Sizes in Stats */}
+            {/* Stats */}
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
               <Stack direction="row" spacing={3}>
                 <Box display="flex" alignItems="center">
-                  <Visibility sx={{ fontSize: 18, color: '#81c784', mr: 1 }} /> {/* Reduced from 20 */}
+                  <Visibility sx={{ fontSize: 18, color: '#81c784', mr: 1 }} />
                   <Typography variant="body2" fontWeight="600">
                     {story.stats?.views || 0} views
                   </Typography>
                 </Box>
                 <Box display="flex" alignItems="center">
-                  <Favorite sx={{ fontSize: 18, color: '#e91e63', mr: 1 }} /> {/* Reduced from 20 */}
+                  <Favorite sx={{ fontSize: 18, color: '#e91e63', mr: 1 }} />
                   <Typography variant="body2" fontWeight="600">
                     {story.stats?.likes || 0} likes
                   </Typography>
                 </Box>
                 <Box display="flex" alignItems="center">
-                  <Comment sx={{ fontSize: 18, color: '#2196f3', mr: 1 }} /> {/* Reduced from 20 */}
+                  <Comment sx={{ fontSize: 18, color: '#2196f3', mr: 1 }} />
                   <Typography variant="body2" fontWeight="600">
                     {story.stats?.comments || 0} comments
                   </Typography>
@@ -590,7 +667,7 @@ function ViewStory() {
               </Stack>
             </Box>
 
-            {/* 🎯 FIXED: Action Buttons - Available for ALL Users */}
+            {/* Action Buttons */}
             <Stack direction="row" spacing={2} justifyContent="center">
               <ActionButton
                 variant="like"
@@ -630,7 +707,7 @@ function ViewStory() {
                   >
                     Sign in
                   </Button>
-                  {' '}to like and comment on stories
+                  {' '}to like, comment, and message the author
                 </Typography>
               </Box>
             )}
@@ -645,7 +722,7 @@ function ViewStory() {
                 Comments ({story.stats?.comments || 0})
               </Typography>
 
-              {/* Add Comment Form - Only for authenticated users */}
+              {/* Add Comment Form */}
               {isAuthenticated ? (
                 <Box mb={4}>
                   <TextField

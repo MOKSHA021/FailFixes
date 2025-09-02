@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContexts'; // ✅ ADD THIS
 
 // Import Components
 import Header from './components/layout/header';
@@ -19,6 +20,7 @@ import Dashboard from './pages/Dashboard';
 import UserProfile from './pages/UserProfile';
 import FollowersPage from './pages/Followers';
 import FollowingPage from './pages/Following';
+import ChatPage from './pages/ChatPage'; // ✅ ADD THIS
 
 // 🎨 **ENHANCED THEME CONFIGURATION**
 const theme = createTheme({
@@ -267,81 +269,95 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <Router>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
-          }}>
-            <Header />
-            
-            <main style={{ 
-              flex: 1,
-              position: 'relative',
-              zIndex: 1
+        <SocketProvider> {/* ✅ ADD SOCKET PROVIDER */}
+          <Router>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              minHeight: '100vh',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
             }}>
-              <Routes>
-                {/* 🏠 Home Route - Landing + Feed combined */}
-                <Route path="/" element={<Home />} />
-                
-                {/* 🔐 Authentication Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                
-                {/* 📚 Story Routes */}
-                <Route path="/browse" element={<Browse />} />
-                <Route path="/stories" element={<Browse />} />
-                
-                {/* ✍️ Create Story Routes */}
-                <Route path="/write" element={
-                  <ProtectedRoute>
-                    <CreateStory />
-                  </ProtectedRoute>
-                } />
-                <Route path="/create" element={
-                  <ProtectedRoute>
-                    <CreateStory />
-                  </ProtectedRoute>
-                } />
-                <Route path="/create-story" element={
-                  <ProtectedRoute>
-                    <CreateStory />
-                  </ProtectedRoute>
-                } />
-                
-                {/* 📖 View Story Route */}
-                <Route path="/story/:id" element={<ViewStory />} />
-                
-                {/* 📊 Dashboard Route */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                
-                {/* 👤 User Profile Routes */}
-                <Route path="/profile/:username" element={<UserProfile />} />
-                <Route path="/profile/:username/followers" element={<FollowersPage />} />
-                <Route path="/profile/:username/following" element={<FollowingPage />} />
-                
-                {/* 🔄 Redirects for legacy routes */}
-                <Route path="/home" element={<Navigate to="/" replace />} />
-                <Route path="/stories/:id" element={<Navigate to="/story/:id" replace />} />
-                
-                {/* 🚫 Catch-all route - redirect to home */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
-            
-            <Footer />
-          </div>
-        </Router>
+              <Header />
+              
+              <main style={{ 
+                flex: 1,
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <Routes>
+                  {/* 🏠 Home Route - Landing + Feed combined */}
+                  <Route path="/" element={<Home />} />
+                  
+                  {/* 🔐 Authentication Routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  
+                  {/* 📚 Story Routes */}
+                  <Route path="/browse" element={<Browse />} />
+                  <Route path="/stories" element={<Browse />} />
+                  
+                  {/* ✍️ Create Story Routes */}
+                  <Route path="/write" element={
+                    <ProtectedRoute>
+                      <CreateStory />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/create" element={
+                    <ProtectedRoute>
+                      <CreateStory />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/create-story" element={
+                    <ProtectedRoute>
+                      <CreateStory />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* 📖 View Story Route */}
+                  <Route path="/story/:id" element={<ViewStory />} />
+                  
+                  {/* 📊 Dashboard Route */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* 👤 User Profile Routes */}
+                  <Route path="/profile/:username" element={<UserProfile />} />
+                  <Route path="/profile/:username/followers" element={<FollowersPage />} />
+                  <Route path="/profile/:username/following" element={<FollowingPage />} />
+                  
+                  {/* ✅ ADD CHAT ROUTE */}
+                  <Route path="/chat" element={
+                    <ProtectedRoute>
+                      <ChatPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/messages" element={
+                    <ProtectedRoute>
+                      <ChatPage />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* 🔄 Redirects for legacy routes */}
+                  <Route path="/home" element={<Navigate to="/" replace />} />
+                  <Route path="/stories/:id" element={<Navigate to="/story/:id" replace />} />
+                  
+                  {/* 🚫 Catch-all route - redirect to home */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+              
+              <Footer />
+            </div>
+          </Router>
+        </SocketProvider> {/* ✅ CLOSE SOCKET PROVIDER */}
       </AuthProvider>
     </ThemeProvider>
   );
