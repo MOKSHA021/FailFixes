@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box, Paper, TextField, Button, Typography, Link, Alert,
   CircularProgress, FormControlLabel, Checkbox, IconButton,
@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme as useAppTheme } from '../context/ThemeContext';
 import axios from 'axios';
 
-// Gentle Animations
+// 🎯 MOVED ANIMATIONS OUTSIDE COMPONENT
 const softPulse = keyframes`
   0%, 100% {
     box-shadow: 0 0 15px rgba(174, 213, 129, 0.2), 0 0 30px rgba(174, 213, 129, 0.1);
@@ -53,12 +53,151 @@ const lightGradient = keyframes`
   100% { background-position: 0% 50%; }
 `;
 
+// 🎯 MOVED ALL STYLED COMPONENTS OUTSIDE
+const BackgroundContainer = styled(Box)(({ theme, darkMode }) => ({
+  minHeight: '100vh',
+  background: darkMode 
+    ? `
+      radial-gradient(circle at 25% 25%, rgba(174, 213, 129, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(255, 183, 195, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(179, 229, 252, 0.08) 0%, transparent 50%),
+      linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #1e293b 75%, #0f172a 100%)
+    `
+    : `
+      radial-gradient(circle at 25% 25%, rgba(174, 213, 129, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(255, 183, 195, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(179, 229, 252, 0.12) 0%, transparent 50%),
+      linear-gradient(135deg, #fafbfc 0%, #f0f5ff 25%, #fef9f0 50%, #f0fff6 75%, #f7faff 100%)
+    `,
+  backgroundSize: '300% 300%',
+  animation: `${lightGradient} 12s ease infinite`,
+  position: 'relative',
+  overflow: 'hidden',
+}));
+
+const FloatingElement = styled(Box)(({ delay, size, left, top, duration, darkMode }) => ({
+  position: 'absolute',
+  left: `${left}%`,
+  top: `${top}%`,
+  width: `${size}px`,
+  height: `${size}px`,
+  background: darkMode
+    ? 'linear-gradient(135deg, rgba(174, 213, 129, 0.1), rgba(179, 229, 252, 0.08))'
+    : 'linear-gradient(135deg, rgba(174, 213, 129, 0.15), rgba(179, 229, 252, 0.1))',
+  animation: `${softMorph} ${duration}s ease-in-out infinite`,
+  animationDelay: `${delay}s`,
+  backdropFilter: 'blur(2px)',
+  border: darkMode 
+    ? '1px solid rgba(174, 213, 129, 0.05)'
+    : '1px solid rgba(174, 213, 129, 0.1)'
+}));
+
+const EnhancedSignupCard = styled(Paper)(({ theme, darkMode }) => ({
+  background: darkMode
+    ? `
+      linear-gradient(135deg,
+        rgba(30, 41, 59, 0.9) 0%,
+        rgba(15, 23, 42, 0.8) 50%,
+        rgba(30, 41, 59, 0.75) 100%
+      )
+    `
+    : `
+      linear-gradient(135deg,
+        rgba(255, 255, 255, 0.9) 0%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(255, 255, 255, 0.75) 100%
+      )
+    `,
+  backdropFilter: 'blur(25px) saturate(130%)',
+  WebkitBackdropFilter: 'blur(25px) saturate(130%)',
+  border: darkMode 
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(255, 255, 255, 0.25)',
+  borderRadius: '24px',
+  padding: theme.spacing(5, 4.5),
+  position: 'relative',
+  overflow: 'hidden',
+  animation: `${gentleSlide} 0.6s cubic-bezier(0.4, 0, 0.2, 1)`,
+  boxShadow: darkMode
+    ? `
+      0 12px 40px rgba(0, 0, 0, 0.3),
+      0 6px 20px rgba(0, 0, 0, 0.2)
+    `
+    : `
+      0 12px 40px rgba(0, 0, 0, 0.06),
+      0 6px 20px rgba(0, 0, 0, 0.03),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4)
+    `,
+  maxWidth: '620px',
+  width: '100%',
+  margin: '0 auto',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '3px',
+    background: 'linear-gradient(90deg, #aed581, #b3e5fc, #ffb3ba, #c8e6c9, #dcedc8)',
+    backgroundSize: '300% 300%',
+    animation: `${lightGradient} 4s ease infinite`
+  }
+}));
+
+const StyledTextField = styled(TextField)(({ theme, darkMode }) => ({
+  marginBottom: theme.spacing(3),
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '14px',
+    background: darkMode 
+      ? 'rgba(30, 41, 59, 0.85)'
+      : 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(10px)',
+    fontSize: '1.05rem',
+    fontWeight: 500,
+    minHeight: '58px',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    border: '1.5px solid transparent',
+    '& input': {
+      padding: '16px 12px',
+      color: darkMode ? '#ffffff' : '#000000',
+    },
+    '&:hover': {
+      background: darkMode 
+        ? 'rgba(30, 41, 59, 0.9)'
+        : 'rgba(255, 255, 255, 0.9)',
+      transform: 'translateY(-1px)',
+      boxShadow: darkMode
+        ? '0 4px 15px rgba(0, 0, 0, 0.3)'
+        : '0 4px 15px rgba(0, 0, 0, 0.06)',
+      borderColor: 'rgba(174, 213, 129, 0.3)'
+    },
+    '&.Mui-focused': {
+      background: darkMode 
+        ? 'rgba(30, 41, 59, 0.95)'
+        : 'rgba(255, 255, 255, 0.95)',
+      transform: 'translateY(-1px)',
+      boxShadow: '0 6px 20px rgba(174, 213, 129, 0.12)',
+      borderColor: '#aed581',
+    }
+  },
+  '& .MuiInputLabel-root': {
+    fontWeight: 500,
+    fontSize: '1rem',
+    color: darkMode ? '#b3b3b3' : '#666666',
+    '&.Mui-focused': {
+      color: '#aed581'
+    }
+  }
+}));
+
 const Signup = () => {
   const { theme } = useAppTheme();
   const navigate = useNavigate();
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
-  
+  const darkMode = theme.palette.mode === 'dark';
+
+  // 🎯 OPTIMIZED STATE - SINGLE STATE OBJECT
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -67,324 +206,58 @@ const Signup = () => {
     displayName: '',
     allowAnonymous: false
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [mounted, setMounted] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
-  const [formProgress, setFormProgress] = useState(0);
 
-  // Theme-aware styled components (inside component to access theme)
-  const BackgroundContainer = styled(Box)(() => ({
-    minHeight: '100vh',
-    background: theme.palette.mode === 'light' 
-      ? `
-        radial-gradient(circle at 25% 25%, rgba(174, 213, 129, 0.12) 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, rgba(255, 183, 195, 0.12) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(179, 229, 252, 0.12) 0%, transparent 50%),
-        linear-gradient(135deg, #fafbfc 0%, #f0f5ff 25%, #fef9f0 50%, #f0fff6 75%, #f7faff 100%)
-      `
-      : `
-        radial-gradient(circle at 25% 25%, rgba(174, 213, 129, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, rgba(255, 183, 195, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(179, 229, 252, 0.08) 0%, transparent 50%),
-        linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.background.paper} 100%)
-      `,
-    backgroundSize: '300% 300%',
-    animation: `${lightGradient} 12s ease infinite`,
-    position: 'relative',
-    overflow: 'hidden',
-  }));
-
-  const FloatingElement = styled(Box)(({ delay, size, left, top, duration }) => ({
-    position: 'absolute',
-    left: `${left}%`,
-    top: `${top}%`,
-    width: `${size}px`,
-    height: `${size}px`,
-    background: theme.palette.mode === 'light'
-      ? 'linear-gradient(135deg, rgba(174, 213, 129, 0.15), rgba(179, 229, 252, 0.1))'
-      : 'linear-gradient(135deg, rgba(174, 213, 129, 0.1), rgba(179, 229, 252, 0.08))',
-    animation: `${softMorph} ${duration}s ease-in-out infinite`,
-    animationDelay: `${delay}s`,
-    backdropFilter: 'blur(2px)',
-    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(174, 213, 129, 0.1)' : 'rgba(174, 213, 129, 0.05)'}`
-  }));
-
-  const EnhancedSignupCard = styled(Paper)(() => ({
-    background: theme.palette.mode === 'light'
-      ? `
-        linear-gradient(135deg,
-          rgba(255, 255, 255, 0.9) 0%,
-          rgba(255, 255, 255, 0.8) 50%,
-          rgba(255, 255, 255, 0.75) 100%
-        )
-      `
-      : `
-        linear-gradient(135deg,
-          rgba(30, 41, 59, 0.9) 0%,
-          rgba(15, 23, 42, 0.8) 50%,
-          rgba(30, 41, 59, 0.75) 100%
-        )
-      `,
-    backdropFilter: 'blur(25px) saturate(130%)',
-    WebkitBackdropFilter: 'blur(25px) saturate(130%)',
-    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.1)'}`,
-    borderRadius: '24px',
-    padding: theme.spacing(5, 4.5),
-    position: 'relative',
-    overflow: 'hidden',
-    animation: `${gentleSlide} 0.6s cubic-bezier(0.4, 0, 0.2, 1)`,
-    boxShadow: theme.palette.mode === 'light'
-      ? `
-        0 12px 40px rgba(0, 0, 0, 0.06),
-        0 6px 20px rgba(0, 0, 0, 0.03),
-        inset 0 1px 0 rgba(255, 255, 255, 0.4)
-      `
-      : `
-        0 12px 40px rgba(0, 0, 0, 0.3),
-        0 6px 20px rgba(0, 0, 0, 0.2)
-      `,
-    maxWidth: '620px',
-    width: '100%',
-    margin: '0 auto',
-    '&::before': {
-      content: '""',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: '3px',
-      background: 'linear-gradient(90deg, #aed581, #b3e5fc, #ffb3ba, #c8e6c9, #dcedc8)',
-      backgroundSize: '300% 300%',
-      animation: `${lightGradient} 4s ease infinite`
-    }
-  }));
-
-  const BrandHeader = styled(Box)(() => ({
-    textAlign: 'center',
-    marginBottom: theme.spacing(4),
-  }));
-
-  const LogoIcon = styled(AutoFixHigh)(() => ({
-    fontSize: '4.2rem',
-    background: 'linear-gradient(135deg, #81c784, #aed581, #90caf9)',
-    backgroundClip: 'text',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    animation: `${softPulse} 3s ease-in-out infinite alternate`,
-    filter: 'drop-shadow(0 4px 8px rgba(129, 199, 132, 0.2))',
-    marginBottom: theme.spacing(2)
-  }));
-
-  const BrandTitle = styled(Typography)(() => ({
-    fontSize: '3.5rem',
-    fontWeight: 800,
-    background: 'linear-gradient(135deg, #81c784 0%, #aed581 25%, #90caf9 50%, #f8bbd9 75%, #b3e5fc 100%)',
-    backgroundSize: '300% 300%',
-    backgroundClip: 'text',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    animation: `${lightGradient} 6s ease infinite`,
-    marginBottom: theme.spacing(1.5),
-    letterSpacing: '-0.03em',
-    [theme.breakpoints.down('sm')]: {
-      fontSize: '2.8rem'
-    }
-  }));
-
-  const WelcomeSection = styled(Box)(() => ({
-    background: theme.palette.mode === 'light'
-      ? 'linear-gradient(135deg, rgba(174, 213, 129, 0.08), rgba(179, 229, 252, 0.08))'
-      : 'linear-gradient(135deg, rgba(174, 213, 129, 0.15), rgba(179, 229, 252, 0.15))',
-    borderRadius: '16px',
-    padding: theme.spacing(3.5),
-    marginBottom: theme.spacing(4),
-    border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(174, 213, 129, 0.15)' : 'rgba(174, 213, 129, 0.3)'}`,
-    backdropFilter: 'blur(10px)',
-    position: 'relative',
-  }));
-
-  const FeatureGrid = styled(Box)(() => ({
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: theme.spacing(1.5),
-    marginTop: theme.spacing(2),
-    [theme.breakpoints.down('sm')]: {
-      gridTemplateColumns: '1fr'
-    }
-  }));
-
-  const FeatureItem = ({ icon, text, color, ...props }) => (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1.5,
-        p: 1.5,
-        borderRadius: 2,
-        background: theme.palette.mode === 'light'
-          ? 'rgba(255, 255, 255, 0.6)'
-          : 'rgba(255, 255, 255, 0.05)',
-        border: `1px solid ${theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.1)'}`,
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: theme.palette.mode === 'light'
-            ? '0 4px 15px rgba(0, 0, 0, 0.08)'
-            : '0 4px 15px rgba(0, 0, 0, 0.3)'
-        }
-      }}
-      {...props}
-    >
-      {React.cloneElement(icon, { sx: { color, fontSize: '1.25rem' } })}
-      <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-        {text}
-      </Typography>
-    </Box>
-  );
-
-  const EnhancedTextField = styled(TextField)(({ strength }) => ({
-    marginBottom: theme.spacing(3),
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '14px',
-      background: theme.palette.mode === 'light' 
-        ? 'rgba(255, 255, 255, 0.85)' 
-        : 'rgba(30, 41, 59, 0.85)',
-      backdropFilter: 'blur(10px)',
-      fontSize: '1.05rem',
-      fontWeight: 500,
-      minHeight: '58px',
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      border: '1.5px solid transparent',
-      color: theme.palette.text.primary,
-      '& input': {
-        padding: '16px 12px',
-        color: theme.palette.text.primary,
-      },
-      position: 'relative',
-      '&:hover': {
-        background: theme.palette.mode === 'light' 
-          ? 'rgba(255, 255, 255, 0.9)' 
-          : 'rgba(30, 41, 59, 0.9)',
-        transform: 'translateY(-1px)',
-        boxShadow: theme.palette.mode === 'light'
-          ? '0 4px 15px rgba(0, 0, 0, 0.06)'
-          : '0 4px 15px rgba(0, 0, 0, 0.3)',
-        borderColor: 'rgba(174, 213, 129, 0.3)'
-      },
-      '&.Mui-focused': {
-        background: theme.palette.mode === 'light' 
-          ? 'rgba(255, 255, 255, 0.95)' 
-          : 'rgba(30, 41, 59, 0.95)',
-        transform: 'translateY(-1px)',
-        boxShadow: '0 6px 20px rgba(174, 213, 129, 0.12)',
-        borderColor: '#aed581',
-        '&::after': strength && {
-          content: '""',
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          height: '3px',
-          width: `${strength}%`,
-          background: strength < 40 ? '#ffab91' : strength < 70 ? '#ffcc02' : '#81c784',
-          borderRadius: '0 0 12px 12px',
-          transition: 'width 0.3s ease'
-        }
-      }
-    },
-    '& .MuiInputLabel-root': {
-      fontWeight: 500,
-      fontSize: '1rem',
-      color: theme.palette.text.secondary,
-      '&.Mui-focused': {
-        color: '#aed581'
-      }
-    }
-  }));
-
-  const EnhancedButton = styled(Button)(({ variant: buttonVariant }) => ({
-    borderRadius: '14px',
-    padding: '18px 44px',
-    fontSize: '1.1rem',
-    fontWeight: 700,
-    textTransform: 'none',
-    position: 'relative',
-    overflow: 'hidden',
-    minHeight: '58px',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    ...(buttonVariant === 'primary' && {
-      background: 'linear-gradient(135deg, #81c784 0%, #aed581 50%, #90caf9 100%)',
-      backgroundSize: '150% 150%',
-      color: 'white',
-      boxShadow: '0 6px 20px rgba(129, 199, 132, 0.25)',
-      '&:hover': {
-        backgroundPosition: 'right center',
-        transform: 'translateY(-2px) scale(1.01)',
-        boxShadow: '0 10px 30px rgba(129, 199, 132, 0.35)'
-      },
-      '&:active': {
-        transform: 'translateY(-1px) scale(0.98)'
-      }
-    }),
-    '&:disabled': {
-      opacity: 0.6,
-      transform: 'none'
-    }
-  }));
-
-  const ProgressIndicator = styled(LinearProgress)(() => ({
-    marginBottom: theme.spacing(3),
-    height: '8px',
-    borderRadius: '4px',
-    background: theme.palette.mode === 'light' 
-      ? 'rgba(255, 255, 255, 0.4)' 
-      : 'rgba(30, 41, 59, 0.4)',
-    '& .MuiLinearProgress-bar': {
-      background: 'linear-gradient(90deg, #81c784, #aed581)',
-      borderRadius: '4px'
-    }
-  }));
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const calculateProgress = () => {
-      const fields = ['email', 'username', 'password', 'confirmPassword'];
-      const filledFields = fields.filter(field => formData[field].trim() !== '').length;
-      setFormProgress((filledFields / fields.length) * 100);
-    };
-    calculateProgress();
-  }, [formData]);
-
-  useEffect(() => {
-    const calculatePasswordStrength = (password) => {
-      let strength = 0;
-      if (password.length >= 6) strength += 25;
-      if (password.match(/[a-z]+/)) strength += 25;
-      if (password.match(/[A-Z]+/)) strength += 25;
-      if (password.match(/[0-9]+/) || password.match(/[^a-zA-Z0-9]+/)) strength += 25;
-      setPasswordStrength(strength);
-    };
-    calculatePasswordStrength(formData.password);
+  // 🎯 MEMOIZED CALCULATIONS TO PREVENT RE-RENDERS
+  const passwordStrength = useMemo(() => {
+    let strength = 0;
+    const password = formData.password;
+    if (password.length >= 6) strength += 25;
+    if (password.match(/[a-z]+/)) strength += 25;
+    if (password.match(/[A-Z]+/)) strength += 25;
+    if (password.match(/[0-9]+/) || password.match(/[^a-zA-Z0-9]+/)) strength += 25;
+    return strength;
   }, [formData.password]);
 
-  const handleChange = (e) => {
-    const { name, value, checked, type } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: '' });
-    }
-  };
+  const formProgress = useMemo(() => {
+    const fields = ['email', 'username', 'password', 'confirmPassword'];
+    const filledFields = fields.filter(field => formData[field].trim() !== '').length;
+    return (filledFields / fields.length) * 100;
+  }, [formData.email, formData.username, formData.password, formData.confirmPassword]);
 
-  const validateForm = () => {
+  // 🎯 OPTIMIZED CHANGE HANDLER - SINGLE FUNCTION
+  const handleInputChange = useCallback((event) => {
+    const { name, value, checked, type } = event.target;
+    
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors(prevErrors => ({
+        ...prevErrors,
+        [name]: ''
+      }));
+    }
+  }, [errors]);
+
+  // 🎯 MEMOIZED FEATURES TO PREVENT RE-CREATION
+  const features = useMemo(() => [
+    { icon: <Groups />, text: 'Share & Learn', color: '#81c784' },
+    { icon: <Psychology />, text: 'Join Community', color: '#90caf9' },
+    { icon: <Shield />, text: 'Privacy First', color: '#ffb74d' },
+    { icon: <TrendingUp />, text: 'Growth Tools', color: '#f8bbd9' }
+  ], []);
+
+  const validateForm = useCallback(() => {
     const newErrors = {};
+    
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -411,10 +284,10 @@ const Signup = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault();
     if (!validateForm()) return;
 
     setLoading(true);
@@ -445,36 +318,52 @@ const Signup = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const features = [
-    { icon: <Groups />, text: 'Share & Learn', color: '#81c784' },
-    { icon: <Psychology />, text: 'Join Community', color: '#90caf9' },
-    { icon: <Shield />, text: 'Privacy First', color: '#ffb74d' },
-    { icon: <TrendingUp />, text: 'Growth Tools', color: '#f8bbd9' }
-  ];
+  }, [formData, validateForm, navigate]);
 
   return (
-    <BackgroundContainer>
+    <BackgroundContainer darkMode={darkMode}>
       {/* Floating Elements */}
-      {[...Array(6)].map((_, i) => (
+      {Array.from({ length: 6 }, (_, i) => (
         <FloatingElement
-          key={i}
+          key={`floating-${i}`} // 🎯 STABLE KEYS
           delay={i * 0.8}
           size={12 + Math.random() * 8}
           left={Math.random() * 100}
           top={Math.random() * 100}
           duration={8 + Math.random() * 4}
+          darkMode={darkMode}
         />
       ))}
 
       <Container maxWidth="sm" sx={{ py: 6 }}>
-        <EnhancedSignupCard elevation={0}>
-          <BrandHeader>
-            <LogoIcon />
-            <BrandTitle variant="h2">
+        <EnhancedSignupCard elevation={0} darkMode={darkMode}>
+          {/* Brand Header */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <AutoFixHigh sx={{
+              fontSize: '4.2rem',
+              background: 'linear-gradient(135deg, #81c784, #aed581, #90caf9)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              mb: 2
+            }} />
+            <Typography
+              variant="h2"
+              sx={{
+                fontSize: '3.5rem',
+                fontWeight: 800,
+                background: 'linear-gradient(135deg, #81c784 0%, #aed581 25%, #90caf9 50%, #f8bbd9 75%, #b3e5fc 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 1.5,
+                [muiTheme.breakpoints.down('sm')]: {
+                  fontSize: '2.8rem'
+                }
+              }}
+            >
               Join FailFixes
-            </BrandTitle>
+            </Typography>
             <Typography 
               variant="h6" 
               sx={{ 
@@ -485,45 +374,97 @@ const Signup = () => {
             >
               Start Your Growth Journey
             </Typography>
-          </BrandHeader>
+          </Box>
 
-          <WelcomeSection>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 700,
-                mb: 1,
-                color: theme.palette.text.primary,
-                textAlign: 'center'
-              }}
-            >
+          {/* Welcome Section */}
+          <Box sx={{
+            background: darkMode
+              ? 'linear-gradient(135deg, rgba(174, 213, 129, 0.15), rgba(179, 229, 252, 0.15))'
+              : 'linear-gradient(135deg, rgba(174, 213, 129, 0.08), rgba(179, 229, 252, 0.08))',
+            borderRadius: '16px',
+            p: 3.5,
+            mb: 4,
+            border: darkMode 
+              ? '1px solid rgba(174, 213, 129, 0.3)'
+              : '1px solid rgba(174, 213, 129, 0.15)',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <Typography variant="h6" sx={{
+              fontWeight: 700,
+              mb: 1,
+              color: theme.palette.text.primary,
+              textAlign: 'center'
+            }}>
               🚀 Join 25,000+ Growth Seekers
             </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                color: theme.palette.text.secondary,
-                mb: 2,
-                textAlign: 'center',
-                lineHeight: 1.6
-              }}
-            >
+            <Typography variant="body1" sx={{
+              color: theme.palette.text.secondary,
+              mb: 2,
+              textAlign: 'center',
+              lineHeight: 1.6
+            }}>
               Transform setbacks into comebacks with our supportive community.
             </Typography>
-            <FeatureGrid>
+            
+            {/* Feature Grid */}
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 1.5,
+              mt: 2,
+              [muiTheme.breakpoints.down('sm')]: {
+                gridTemplateColumns: '1fr'
+              }
+            }}>
               {features.map((feature, index) => (
-                <FeatureItem
-                  key={index}
-                  icon={feature.icon}
-                  text={feature.text}
-                  color={feature.color}
-                />
+                <Box
+                  key={`feature-${index}`} // 🎯 STABLE KEYS
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    p: 1.5,
+                    borderRadius: 2,
+                    background: darkMode
+                      ? 'rgba(255, 255, 255, 0.05)'
+                      : 'rgba(255, 255, 255, 0.6)',
+                    border: darkMode 
+                      ? '1px solid rgba(255, 255, 255, 0.1)'
+                      : '1px solid rgba(255, 255, 255, 0.8)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: darkMode
+                        ? '0 4px 15px rgba(0, 0, 0, 0.3)'
+                        : '0 4px 15px rgba(0, 0, 0, 0.08)'
+                    }
+                  }}
+                >
+                  {React.cloneElement(feature.icon, { sx: { color: feature.color, fontSize: '1.25rem' } })}
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+                    {feature.text}
+                  </Typography>
+                </Box>
               ))}
-            </FeatureGrid>
-          </WelcomeSection>
+            </Box>
+          </Box>
 
           <form onSubmit={handleSubmit}>
-            <ProgressIndicator variant="determinate" value={formProgress} />
+            {/* Progress Indicator */}
+            <LinearProgress 
+              variant="determinate" 
+              value={formProgress}
+              sx={{ 
+                mb: 3,
+                height: '8px',
+                borderRadius: '4px',
+                backgroundColor: darkMode ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                '& .MuiLinearProgress-bar': {
+                  background: 'linear-gradient(90deg, #81c784, #aed581)',
+                  borderRadius: '4px'
+                }
+              }}
+            />
             
             {errors.general && (
               <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>
@@ -531,15 +472,18 @@ const Signup = () => {
               </Alert>
             )}
 
-            <EnhancedTextField
+            {/* Form Fields with STABLE KEYS */}
+            <StyledTextField
+              key="email-field" // 🎯 STABLE KEY
               fullWidth
               type="email"
               name="email"
               label="Email Address"
               value={formData.email}
-              onChange={handleChange}
+              onChange={handleInputChange}
               error={!!errors.email}
               helperText={errors.email}
+              darkMode={darkMode}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -549,14 +493,16 @@ const Signup = () => {
               }}
             />
 
-            <EnhancedTextField
+            <StyledTextField
+              key="username-field" // 🎯 STABLE KEY
               fullWidth
               name="username"
               label="Username"
               value={formData.username}
-              onChange={handleChange}
+              onChange={handleInputChange}
               error={!!errors.username}
               helperText={errors.username}
+              darkMode={darkMode}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -566,16 +512,17 @@ const Signup = () => {
               }}
             />
 
-            <EnhancedTextField
+            <StyledTextField
+              key="password-field" // 🎯 STABLE KEY
               fullWidth
               name="password"
               label="Password"
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
-              onChange={handleChange}
+              onChange={handleInputChange}
               error={!!errors.password}
               helperText={errors.password}
-              strength={passwordStrength}
+              darkMode={darkMode}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -588,7 +535,7 @@ const Signup = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                       sx={{
-                        color: 'rgba(0, 0, 0, 0.5)',
+                        color: theme.palette.text.secondary,
                         '&:hover': {
                           color: '#81c784',
                           backgroundColor: 'rgba(129, 199, 132, 0.1)'
@@ -602,15 +549,17 @@ const Signup = () => {
               }}
             />
 
-            <EnhancedTextField
+            <StyledTextField
+              key="confirm-password-field" // 🎯 STABLE KEY
               fullWidth
               name="confirmPassword"
               label="Confirm Password"
               type={showConfirmPassword ? 'text' : 'password'}
               value={formData.confirmPassword}
-              onChange={handleChange}
+              onChange={handleInputChange}
               error={!!errors.confirmPassword}
               helperText={errors.confirmPassword}
+              darkMode={darkMode}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -623,7 +572,7 @@ const Signup = () => {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       edge="end"
                       sx={{
-                        color: 'rgba(0, 0, 0, 0.5)',
+                        color: theme.palette.text.secondary,
                         '&:hover': {
                           color: '#81c784',
                           backgroundColor: 'rgba(129, 199, 132, 0.1)'
@@ -642,7 +591,7 @@ const Signup = () => {
                 <Checkbox
                   name="allowAnonymous"
                   checked={formData.allowAnonymous}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                   sx={{
                     color: '#81c784',
                     '&.Mui-checked': { color: '#81c784' }
@@ -657,17 +606,37 @@ const Signup = () => {
               sx={{ mb: 4 }}
             />
 
-            <EnhancedButton
+            <Button
               type="submit"
               fullWidth
-              variant="primary"
+              variant="contained"
               disabled={loading}
               startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <PersonAdd />}
               endIcon={!loading && <ArrowForward />}
-              sx={{ mb: 4 }}
+              sx={{
+                mb: 4,
+                borderRadius: '14px',
+                padding: '18px 44px',
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                textTransform: 'none',
+                minHeight: '58px',
+                background: 'linear-gradient(135deg, #81c784 0%, #aed581 50%, #90caf9 100%)',
+                backgroundSize: '150% 150%',
+                boxShadow: '0 6px 20px rgba(129, 199, 132, 0.25)',
+                '&:hover': {
+                  backgroundPosition: 'right center',
+                  transform: 'translateY(-2px) scale(1.01)',
+                  boxShadow: '0 10px 30px rgba(129, 199, 132, 0.35)'
+                },
+                '&:disabled': {
+                  opacity: 0.6,
+                  transform: 'none'
+                }
+              }}
             >
               {loading ? 'Creating Your Account...' : 'Start My Journey'}
-            </EnhancedButton>
+            </Button>
 
             <Box sx={{ textAlign: 'center' }}>
               <Typography sx={{ color: theme.palette.text.secondary, mb: 2 }}>
