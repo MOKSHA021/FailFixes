@@ -24,8 +24,7 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  AvatarGroup,
-  Collapse
+  AvatarGroup
 } from '@mui/material';
 import {
   Create,
@@ -41,9 +40,7 @@ import {
   Refresh,
   People,
   PersonAdd,
-  Comment,
-  ExpandMore,
-  ExpandLess
+  Comment
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -121,14 +118,14 @@ const StatsCard = styled(Card)(({ color }) => ({
 }));
 
 const IconContainer = styled(Box)(({ color }) => ({
-  width: 70,
-  height: 70,
-  borderRadius: '18px',
+  width: 70, // Reduced from 90
+  height: 70, // Reduced from 90
+  borderRadius: '18px', // Reduced from 22px
   background: `linear-gradient(135deg, ${color}15, ${color}25)`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  marginBottom: '20px',
+  marginBottom: '20px', // Reduced from 24px
   marginLeft: 'auto',
   marginRight: 'auto',
   transition: 'all 0.4s ease',
@@ -169,12 +166,6 @@ function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
-
-  // ✅ NEW: State for expanding followers/following sections
-  const [showAllFollowers, setShowAllFollowers] = useState(false);
-  const [showAllFollowing, setShowAllFollowing] = useState(false);
-  const [followersDisplayCount, setFollowersDisplayCount] = useState(3);
-  const [followingDisplayCount, setFollowingDisplayCount] = useState(3);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -256,17 +247,6 @@ function Dashboard() {
     fetchDashboardData(true);
   }, [fetchDashboardData]);
 
-  // ✅ NEW: Handlers for expanding followers/following sections
-  const handleShowMoreFollowers = () => {
-    setShowAllFollowers(!showAllFollowers);
-    setFollowersDisplayCount(showAllFollowers ? 3 : (dashboardData?.recentFollowers?.length || 3));
-  };
-
-  const handleShowMoreFollowing = () => {
-    setShowAllFollowing(!showAllFollowing);
-    setFollowingDisplayCount(showAllFollowing ? 3 : (dashboardData?.recentFollowing?.length || 3));
-  };
-
   if (!isAuthenticated || !user) {
     return (
       <BackgroundContainer>
@@ -307,21 +287,21 @@ function Dashboard() {
     {
       title: 'Stories Shared',
       value: dashboardData?.stats?.storiesShared || 0,
-      icon: <Create sx={{ fontSize: 32 }} />,
+      icon: <Create sx={{ fontSize: 32 }} />, // Reduced from 45
       color: '#4caf50',
       description: 'Inspiring stories you\'ve shared'
     },
     {
       title: 'Total Views',
       value: (dashboardData?.stats?.totalViews || 0).toLocaleString(),
-      icon: <Visibility sx={{ fontSize: 32 }} />,
+      icon: <Visibility sx={{ fontSize: 32 }} />, // Reduced from 45
       color: '#2196f3', 
       description: 'People who read your stories'
     },
     {
       title: 'Hearts Received',
       value: dashboardData?.stats?.totalLikes || dashboardData?.stats?.heartsReceived || 0,
-      icon: <Favorite sx={{ fontSize: 32 }} />,
+      icon: <Favorite sx={{ fontSize: 32 }} />, // Reduced from 45
       color: '#f44336',
       description: 'Community appreciation'
     },
@@ -427,7 +407,7 @@ function Dashboard() {
                   <CardContent sx={{ p: 4, textAlign: 'center' }}>
                     <IconContainer className="icon-container" color={stat.color}>
                       {React.cloneElement(stat.icon, { 
-                        sx: { fontSize: 32, color: stat.color }
+                        sx: { fontSize: 32, color: stat.color } // Reduced from 45
                       })}
                     </IconContainer>
                     
@@ -438,7 +418,7 @@ function Dashboard() {
                         fontWeight: 900, 
                         color: '#1e293b', 
                         mb: 1,
-                        fontSize: { xs: '2rem', md: '2.5rem' },
+                        fontSize: { xs: '2rem', md: '2.5rem' }, // Reduced
                         transition: 'all 0.3s ease'
                       }}
                     >
@@ -451,7 +431,7 @@ function Dashboard() {
                         fontWeight: 700, 
                         color: stat.color,
                         mb: 1,
-                        fontSize: '1.1rem'
+                        fontSize: '1.1rem' // Reduced from 1.3rem
                       }}
                     >
                       {stat.title}
@@ -461,7 +441,7 @@ function Dashboard() {
                       variant="body2" 
                       sx={{ 
                         color: '#64748b',
-                        fontSize: '0.9rem'
+                        fontSize: '0.9rem' // Reduced
                       }}
                     >
                       {stat.description}
@@ -473,7 +453,7 @@ function Dashboard() {
           ))}
         </Grid>
 
-        {/* ✅ UPDATED: Social Section with In-Place Expansion */}
+        {/* 🎯 NEW: Social Section */}
         <Grid container spacing={4} sx={{ mb: 6 }}>
           {/* Recent Followers */}
           <Grid item xs={12} md={6}>
@@ -487,14 +467,14 @@ function Dashboard() {
                   backdropFilter: 'blur(20px)',
                   border: '1px solid rgba(255, 255, 255, 0.3)',
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-                  height: 'fit-content'
+                  height: '100%'
                 }}
               >
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
                   <Box display="flex" alignItems="center">
                     <People sx={{ fontSize: '1.5rem', color: '#9c27b0', mr: 1.5 }} />
                     <Typography variant="h6" sx={{ fontWeight: 800, color: '#1e293b' }}>
-                      Your Followers
+                      Recent Followers
                     </Typography>
                   </Box>
                   <Typography variant="h6" sx={{ color: '#9c27b0', fontWeight: 700 }}>
@@ -520,9 +500,8 @@ function Dashboard() {
                         </Avatar>
                       ))}
                     </AvatarGroup>
-                    
-                    <List sx={{ p: 0, maxHeight: showAllFollowers ? 'none' : 200, overflow: 'auto' }}>
-                      {dashboardData.recentFollowers.slice(0, followersDisplayCount).map((follower, index) => (
+                    <List sx={{ p: 0, maxHeight: 200, overflow: 'auto' }}>
+                      {dashboardData.recentFollowers.slice(0, 3).map((follower, index) => (
                         <ListItem 
                           key={follower.id || index} 
                           sx={{ 
@@ -554,24 +533,6 @@ function Dashboard() {
                         </ListItem>
                       ))}
                     </List>
-
-                    {/* ✅ NEW: View More/Less Button */}
-                    {dashboardData.recentFollowers.length > 3 && (
-                      <Button
-                        variant="outlined"
-                        onClick={handleShowMoreFollowers}
-                        fullWidth
-                        startIcon={showAllFollowers ? <ExpandLess /> : <ExpandMore />}
-                        sx={{ 
-                          mt: 2,
-                          borderColor: '#9c27b0',
-                          color: '#9c27b0',
-                          '&:hover': { borderColor: '#7b1fa2', backgroundColor: 'rgba(156, 39, 176, 0.1)' }
-                        }}
-                      >
-                        {showAllFollowers ? 'View Less' : `View More (${dashboardData.recentFollowers.length - followersDisplayCount} remaining)`}
-                      </Button>
-                    )}
                   </>
                 ) : (
                   <Box textAlign="center" py={4}>
@@ -581,6 +542,20 @@ function Dashboard() {
                     </Typography>
                   </Box>
                 )}
+
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(`/profile/${user?.username || user?.name}/followers`)}
+                  fullWidth
+                  sx={{ 
+                    mt: 2,
+                    borderColor: '#9c27b0',
+                    color: '#9c27b0',
+                    '&:hover': { borderColor: '#7b1fa2', backgroundColor: 'rgba(156, 39, 176, 0.1)' }
+                  }}
+                >
+                  View All Followers
+                </Button>
               </Paper>
             </Grow>
           </Grid>
@@ -597,14 +572,14 @@ function Dashboard() {
                   backdropFilter: 'blur(20px)',
                   border: '1px solid rgba(255, 255, 255, 0.3)',
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-                  height: 'fit-content'
+                  height: '100%'
                 }}
               >
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
                   <Box display="flex" alignItems="center">
                     <Star sx={{ fontSize: '1.5rem', color: '#ff9800', mr: 1.5 }} />
                     <Typography variant="h6" sx={{ fontWeight: 800, color: '#1e293b' }}>
-                      You're Following
+                      Following
                     </Typography>
                   </Box>
                   <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 700 }}>
@@ -630,9 +605,8 @@ function Dashboard() {
                         </Avatar>
                       ))}
                     </AvatarGroup>
-                    
-                    <List sx={{ p: 0, maxHeight: showAllFollowing ? 'none' : 200, overflow: 'auto' }}>
-                      {dashboardData.recentFollowing.slice(0, followingDisplayCount).map((following, index) => (
+                    <List sx={{ p: 0, maxHeight: 200, overflow: 'auto' }}>
+                      {dashboardData.recentFollowing.slice(0, 3).map((following, index) => (
                         <ListItem 
                           key={following.id || index} 
                           sx={{ 
@@ -664,24 +638,6 @@ function Dashboard() {
                         </ListItem>
                       ))}
                     </List>
-
-                    {/* ✅ NEW: View More/Less Button */}
-                    {dashboardData.recentFollowing.length > 3 && (
-                      <Button
-                        variant="outlined"
-                        onClick={handleShowMoreFollowing}
-                        fullWidth
-                        startIcon={showAllFollowing ? <ExpandLess /> : <ExpandMore />}
-                        sx={{ 
-                          mt: 2,
-                          borderColor: '#ff9800',
-                          color: '#ff9800',
-                          '&:hover': { borderColor: '#f57c00', backgroundColor: 'rgba(255, 152, 0, 0.1)' }
-                        }}
-                      >
-                        {showAllFollowing ? 'View Less' : `View More (${dashboardData.recentFollowing.length - followingDisplayCount} remaining)`}
-                      </Button>
-                    )}
                   </>
                 ) : (
                   <Box textAlign="center" py={4}>
@@ -691,6 +647,20 @@ function Dashboard() {
                     </Typography>
                   </Box>
                 )}
+
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(`/profile/${user?.username || user?.name}/following`)}
+                  fullWidth
+                  sx={{ 
+                    mt: 2,
+                    borderColor: '#ff9800',
+                    color: '#ff9800',
+                    '&:hover': { borderColor: '#f57c00', backgroundColor: 'rgba(255, 152, 0, 0.1)' }
+                  }}
+                >
+                  View All Following
+                </Button>
               </Paper>
             </Grow>
           </Grid>

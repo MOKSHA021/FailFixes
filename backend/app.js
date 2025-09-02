@@ -8,14 +8,13 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/auth');
 const storyRoutes = require('./routes/stories');
 const userRoutes = require('./routes/users');
-const chatRoutes = require('./routes/chats'); // ✅ ADD CHAT ROUTES
 
 const app = express();
 
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
-// ✅ CORS - MUST BE FIRST
+// 🎯 CORS - MUST BE FIRST
 app.use(cors({
   origin: [
     'http://localhost:3000', 
@@ -36,7 +35,7 @@ app.use(cors({
 // Handle preflight requests
 app.options('*', cors());
 
-// ✅ BODY PARSING - MUST BE BEFORE ROUTES
+// 🎯 BODY PARSING - MUST BE BEFORE ROUTES
 app.use(express.json({ 
   limit: '10mb',
   strict: false
@@ -60,7 +59,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// ✅ GLOBAL DEBUG MIDDLEWARE
+// 🎯 GLOBAL DEBUG MIDDLEWARE
 app.use((req, res, next) => {
   console.log(`\n🌐 === GLOBAL REQUEST LOG ===`);
   console.log(`${req.method} ${req.originalUrl}`);
@@ -76,11 +75,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ API ROUTES
+// 🎯 API ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/stories', storyRoutes);
-app.use('/api/chats', chatRoutes); // ✅ ADD CHAT ROUTES
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -88,8 +86,7 @@ app.get('/', (req, res) => {
     success: true,
     message: 'FailFixes API Server',
     version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    features: ['auth', 'stories', 'users', 'chats', 'realtime-chat'] // ✅ ADD CHAT FEATURES
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -99,18 +96,11 @@ app.get('/api/health', (req, res) => {
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    features: {
-      auth: 'active',
-      stories: 'active', 
-      users: 'active',
-      chats: 'active',
-      socketIO: 'active' // ✅ ADD SOCKET.IO STATUS
-    }
+    uptime: process.uptime()
   });
 });
 
-// ✅ 404 Handler
+// 🎯 404 Handler
 app.use('*', (req, res) => {
   console.log(`❌ 404: ${req.method} ${req.originalUrl} not found`);
   res.status(404).json({
@@ -120,15 +110,12 @@ app.use('*', (req, res) => {
       'GET /api/health',
       'POST /api/auth/login',
       'POST /api/auth/register',
-      'POST /api/users/:username/follow',
-      'GET /api/chats', // ✅ ADD CHAT ROUTES
-      'POST /api/chats/direct',
-      'GET /api/chats/:chatId/messages'
+      'POST /api/users/:username/follow'
     ]
   });
 });
 
-// ✅ GLOBAL ERROR HANDLER
+// 🎯 GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('\n❌ === GLOBAL ERROR ===');
   console.error('URL:', req.originalUrl);

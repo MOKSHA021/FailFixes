@@ -34,7 +34,6 @@ import {
 import { styled } from '@mui/material/styles';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { userAPI, storiesAPI } from '../services/api';
 
 // Styled Components
 const ProfileHeader = styled(Paper)(({ theme }) => ({
@@ -47,19 +46,13 @@ const ProfileHeader = styled(Paper)(({ theme }) => ({
   overflow: 'hidden'
 }));
 
-// ✅ FIXED: Removed clickable functionality from StatsCard
 const StatsCard = styled(Card)(({ theme }) => ({
   borderRadius: '16px',
   textAlign: 'center',
   padding: theme.spacing(2),
   background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7))',
   backdropFilter: 'blur(10px)',
-  border: '1px solid rgba(255,255,255,0.3)',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-4px)',
-    boxShadow: '0 8px 25px rgba(0,0,0,0.12)',
-  }
+  border: '1px solid rgba(255,255,255,0.3)'
 }));
 
 const ActionButton = styled(Button)(({ variant: buttonVariant }) => ({
@@ -133,7 +126,7 @@ function UserProfile() {
     return num.toString();
   };
 
-  // ✅ IMPROVED: Fetch user profile with view tracking
+  // Fetch user profile
   useEffect(() => {
     const fetchProfile = async () => {
       if (!username) {
@@ -146,27 +139,30 @@ function UserProfile() {
         setLoading(true);
         setError('');
 
-        console.log('🔄 Fetching profile for username:', username);
+        console.log('Fetching profile for username:', username);
 
-        const response = await userAPI.getUserProfile(username);
-        
-        if (response.data?.success && response.data.profile) {
-          setProfile(response.data.profile);
-          console.log('✅ Profile data received:', response.data.profile);
-
-          // ✅ FIXED: Track profile view if it's not the current user's own profile
-          if (isAuthenticated && currentUser && 
-              (currentUser._id !== response.data.profile._id && 
-               currentUser.id !== response.data.profile._id)) {
-            console.log('📊 Tracking profile view for user:', username);
-            // You can add profile view tracking API call here if needed
-          }
-        } else {
-          throw new Error('Profile not found');
+        const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
         }
+
+        const response = await fetch(`http://localhost:5000/api/users/profile/${username}`, {
+          method: 'GET',
+          headers
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to fetch profile');
+        }
+
+        console.log('Profile data received:', data);
+        setProfile(data.profile);
       } catch (err) {
-        console.error('❌ Profile fetch error:', err);
-        setError(err.response?.data?.message || err.message || 'Failed to load profile');
+        console.error('Profile fetch error:', err);
+        setError(err.message || 'Failed to load profile');
         setProfile(null);
       } finally {
         setLoading(false);
@@ -174,29 +170,24 @@ function UserProfile() {
     };
 
     fetchProfile();
-  }, [username, isAuthenticated, currentUser]);
+  }, [username]);
 
-  // ✅ IMPROVED: Fetch user stories with better error handling
+  // Fetch user stories
   useEffect(() => {
     const fetchStories = async () => {
       if (!username || !profile) return;
 
       try {
         setStoriesLoading(true);
-        console.log('🔄 Fetching stories for:', username);
 
-        const response = await storiesAPI.getStoriesByAuthor(username, { limit: 6 });
-        
-        if (response.data?.success) {
-          setStories(response.data.stories || []);
-          console.log('✅ Stories loaded:', response.data.stories?.length || 0);
-        } else {
-          // Handle cases where API doesn't return success flag
-          setStories(response.data?.stories || []);
+        const response = await fetch(`http://localhost:5000/api/stories/author/${username}?limit=6`);
+        const data = await response.json();
+
+        if (response.ok) {
+          setStories(data.stories || []);
         }
       } catch (err) {
-        console.error('❌ Stories fetch error:', err);
-        setStories([]); // Set empty array on error
+        console.error('Stories fetch error:', err);
       } finally {
         setStoriesLoading(false);
       }
@@ -205,7 +196,7 @@ function UserProfile() {
     fetchStories();
   }, [username, profile]);
 
-  // ✅ IMPROVED: Handle follow/unfollow with proper state updates
+  // Handle follow/unfollow
   const handleFollow = async () => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -220,42 +211,41 @@ function UserProfile() {
     try {
       setFollowLoading(true);
 
+      const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
       const targetUsername = profile.username || profile.name || username;
-      console.log('🔄 Following user:', targetUsername);
+      console.log('Following user:', targetUsername);
 
-      const response = await userAPI.followUser(targetUsername);
+      const response = await fetch(`http://localhost:5000/api/users/${targetUsername}/follow`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (response.data?.success) {
-        // ✅ FIXED: Update profile state with proper follower count adjustment
-        setProfile(prev => {
-          const newFollowStatus = response.data.isFollowing;
-          const currentCount = prev.stats?.followersCount || 0;
-          const adjustment = newFollowStatus ? 1 : -1;
-          
-          return {
-            ...prev,
-            isFollowing: newFollowStatus,
-            stats: {
-              ...prev.stats,
-              followersCount: Math.max(0, currentCount + adjustment)
-            }
-          };
-        });
-        
-        console.log('✅ Follow action successful:', response.data.message);
+      const data = await response.json();
+
+      if (response.ok) {
+        setProfile(prev => ({
+          ...prev,
+          isFollowing: data.isFollowing
+        }));
+        console.log('Follow action successful:', data.message);
       } else {
-        throw new Error(response.data?.message || 'Failed to follow user');
+        throw new Error(data.message || 'Failed to follow user');
       }
     } catch (error) {
-      console.error('❌ Follow error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error following user. Please try again.';
-      alert(errorMessage);
+      console.error('Follow error:', error);
+      alert('Error following user. Please try again.');
     } finally {
       setFollowLoading(false);
     }
   };
-
-  // ✅ REMOVED: handleStatsClick function completely removed
 
   // Loading state
   if (loading) {
@@ -279,7 +269,6 @@ function UserProfile() {
           variant="outlined"
           onClick={() => navigate('/browse')}
           sx={{ borderRadius: 2 }}
-          color="primary"
         >
           Back to Stories
         </Button>
@@ -298,7 +287,6 @@ function UserProfile() {
           variant="outlined"
           onClick={() => navigate('/browse')}
           sx={{ borderRadius: 2 }}
-          color="primary"
         >
           Back to Stories
         </Button>
@@ -314,9 +302,9 @@ function UserProfile() {
   const memberSince = formatDate(profile.createdAt);
   const avatarInitials = getInitials(displayName);
 
-  // ✅ FIXED: Better stats calculation with proper fallbacks
+  // Stats with safe defaults
   const stats = {
-    stories: profile.storiesCount || profile.stats?.storiesCount || stories.length || 0,
+    stories: profile.storiesCount || profile.stats?.storiesCount || 0,
     followers: profile.stats?.followersCount || 0,
     following: profile.stats?.followingCount || 0,
     views: profile.stats?.totalViews || 0
@@ -326,8 +314,7 @@ function UserProfile() {
   const canFollow = isAuthenticated && 
                    currentUser && 
                    profile.canFollow !== false && 
-                   currentUser._id !== profile._id &&
-                   currentUser.id !== profile._id;
+                   currentUser._id !== profile._id;
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -396,15 +383,6 @@ function UserProfile() {
                   color: 'white',
                   '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' }
                 }}
-                onClick={() => {
-                  if (navigator.clipboard) {
-                    navigator.clipboard.writeText(window.location.href)
-                      .then(() => alert('Profile link copied to clipboard!'))
-                      .catch(() => alert('Unable to copy link'));
-                  } else {
-                    alert('Clipboard not supported in your browser');
-                  }
-                }}
               >
                 Share Profile
               </Button>
@@ -413,33 +391,13 @@ function UserProfile() {
         </Grid>
       </ProfileHeader>
 
-      {/* ✅ FIXED: Non-clickable Stats Cards */}
+      {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {[
-          { 
-            label: 'Stories', 
-            value: stats.stories, 
-            icon: <Article />, 
-            color: '#81c784'
-          },
-          { 
-            label: 'Followers', 
-            value: stats.followers, 
-            icon: <Person />, 
-            color: '#90caf9'
-          },
-          { 
-            label: 'Following', 
-            value: stats.following, 
-            icon: <PersonAdd />, 
-            color: '#ffb74d'
-          },
-          { 
-            label: 'Total Views', 
-            value: stats.views, 
-            icon: <Visibility />, 
-            color: '#f8bbd9'
-          }
+          { label: 'Stories', value: stats.stories, icon: <Article />, color: '#81c784' },
+          { label: 'Followers', value: stats.followers, icon: <Person />, color: '#90caf9' },
+          { label: 'Following', value: stats.following, icon: <PersonAdd />, color: '#ffb74d' },
+          { label: 'Total Views', value: stats.views, icon: <Visibility />, color: '#f8bbd9' }
         ].map((stat, index) => (
           <Grid item xs={6} md={3} key={index}>
             <StatsCard>
@@ -488,7 +446,7 @@ function UserProfile() {
               ) : stories.length > 0 ? (
                 <Grid container spacing={3}>
                   {stories.map((story) => (
-                    <Grid item xs={12} md={6} key={story._id || story.id}>
+                    <Grid item xs={12} md={6} key={story._id}>
                       <Card
                         sx={{
                           borderRadius: 2,
@@ -496,14 +454,14 @@ function UserProfile() {
                           '&:hover': { transform: 'translateY(-4px)' },
                           transition: 'all 0.3s ease'
                         }}
-                        onClick={() => navigate(`/story/${story._id || story.id}`)}
+                        onClick={() => navigate(`/story/${story._id}`)}
                       >
                         <CardContent>
                           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                             {story.title || 'Untitled Story'}
                           </Typography>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            {story.excerpt || story.content?.substring(0, 100) + '...' || 'No excerpt available'}
+                            {story.excerpt || 'No excerpt available'}
                           </Typography>
                           <Box display="flex" justifyContent="space-between" alignItems="center">
                             <Chip 
@@ -515,13 +473,13 @@ function UserProfile() {
                               <Box display="flex" alignItems="center">
                                 <Visibility sx={{ fontSize: 16, mr: 0.5 }} />
                                 <Typography variant="caption">
-                                  {story.stats?.views || story.views || 0}
+                                  {story.stats?.views || 0}
                                 </Typography>
                               </Box>
                               <Box display="flex" alignItems="center">
                                 <Favorite sx={{ fontSize: 16, mr: 0.5, color: '#e91e63' }} />
                                 <Typography variant="caption">
-                                  {story.stats?.likes || story.likes || 0}
+                                  {story.stats?.likes || 0}
                                 </Typography>
                               </Box>
                             </Box>
@@ -536,9 +494,6 @@ function UserProfile() {
                   <Article sx={{ fontSize: 48, color: '#ccc', mb: 2 }} />
                   <Typography variant="h6" color="text.secondary">
                     No stories published yet
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {displayName} hasn't shared any stories yet.
                   </Typography>
                 </Box>
               )}
@@ -581,13 +536,6 @@ function UserProfile() {
                   <ListItemText
                     primary="Username"
                     secondary={`@${displayUsername}`}
-                  />
-                </ListItem>
-                <Divider />
-                <ListItem>
-                  <ListItemText
-                    primary="Stories Published"
-                    secondary={`${stats.stories} ${stats.stories === 1 ? 'story' : 'stories'}`}
                   />
                 </ListItem>
               </List>

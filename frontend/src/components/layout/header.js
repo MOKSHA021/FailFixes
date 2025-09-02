@@ -6,13 +6,13 @@ import {
 } from '@mui/material';
 import {
   AutoFixHigh, Menu as MenuIcon, Dashboard, Create, Explore, Person,
-  Settings, Logout, Notifications, Login, PersonAdd, Home, Close, Chat
+  Settings, Logout, Notifications, Login, PersonAdd, Home, Close, Timeline
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-// Animations
+// 🎨 **ELEGANT ANIMATIONS - Matching Home Style**
 const gentleFloat = keyframes`
   0%, 100% { 
     transform: translateY(0px) rotate(0deg); 
@@ -31,7 +31,16 @@ const softGlow = keyframes`
   }
 `;
 
-// Styled Components
+const subtleShimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+`;
+
+// 🏗️ **ELEGANT STYLED COMPONENTS - Matching Home Style**
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
   background: `
     linear-gradient(135deg, 
@@ -51,6 +60,33 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
     0 2px 8px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.6)
   `,
+  position: 'relative',
+  overflow: 'hidden',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: `
+      linear-gradient(90deg, 
+        transparent, 
+        rgba(129, 199, 132, 0.05), 
+        transparent
+      )
+    `,
+    animation: `${subtleShimmer} 8s ease-in-out infinite`,
+  },
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '2px',
+    background: 'linear-gradient(90deg, #81c784, #aed581, #90caf9, #f8bbd9)',
+  }
 }));
 
 const LogoContainer = styled(Box)(({ theme }) => ({
@@ -217,14 +253,12 @@ function Header() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ UPDATED NAVIGATION WITH MESSAGES
   const navigation = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Browse', path: '/browse', icon: Explore },
     ...(isAuthenticated ? [
       { name: 'Write', path: '/write', icon: Create },
-      { name: 'Dashboard', path: '/dashboard', icon: Dashboard },
-      { name: 'Messages', path: '/chat', icon: Chat } // ✅ ADD MESSAGES
+      { name: 'Dashboard', path: '/dashboard', icon: Dashboard }
     ] : [])
   ];
 
@@ -465,10 +499,6 @@ function Header() {
         <MenuItem onClick={() => { navigate(`/profile/${user?.username || user?.name}`); handleMenuClose(); }}>
           <Person sx={{ mr: 2, color: '#81c784' }} />
           Profile
-        </MenuItem>
-        <MenuItem onClick={() => { navigate('/chat'); handleMenuClose(); }}>
-          <Chat sx={{ mr: 2, color: '#81c784' }} />
-          Messages
         </MenuItem>
         <MenuItem onClick={() => { navigate('/settings'); handleMenuClose(); }}>
           <Settings sx={{ mr: 2, color: '#81c784' }} />
