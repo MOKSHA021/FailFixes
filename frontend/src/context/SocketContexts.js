@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client'; // v4 named import [fix]
 import { useAuth } from './AuthContext';
 
-const SocketContext = createContext();
+const SocketContext = createContext(null);
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
@@ -19,44 +19,47 @@ export const SocketProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const token = localStorage.getItem('ff_token') || localStorage.getItem('token');
-      
-      const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
-        auth: { token },
-        transports: ['websocket', 'polling']
+    if (!isAuthenticated || !user) return;
+
+    const token = localStorage.getItem('ff_token') || localStorage.getItem('token');
+    const serverURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+    // establish connection
+    const s = io(serverURL, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
+
+    s.on('connect', () => {
+      console.log('🔌 Connected to chat server');
+      setIsConnected(true);
+    });
+
+    s.on('disconnect', () => {
+      console.log('🔌 Disconnected from chat server');
+      setIsConnected(false);
+    });
+
+    s.on('userOnline', ({ userId }) => {
+      setOnlineUsers(prev => new Set([...prev, userId]));
+    });
+
+    s.on('userOffline', ({ userId }) => {
+      setOnlineUsers(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
       });
+    });
 
-      newSocket.on('connect', () => {
-        console.log('🔌 Connected to chat server');
-        setIsConnected(true);
-      });
+    setSocket(s);
 
-      newSocket.on('disconnect', () => {
-        console.log('🔌 Disconnected from chat server');
-        setIsConnected(false);
-      });
-
-      newSocket.on('userOnline', (data) => {
-        setOnlineUsers(prev => new Set([...prev, data.userId]));
-      });
-
-      newSocket.on('userOffline', (data) => {
-        setOnlineUsers(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(data.userId);
-          return newSet;
-        });
-      });
-
-      setSocket(newSocket);
-
-      return () => {
-        newSocket.close();
-        setSocket(null);
-        setIsConnected(false);
-      };
-    }
+    return () => {
+      s.close();
+      setSocket(null);
+      setIsConnected(false);
+      setOnlineUsers(new Set());
+    };
   }, [isAuthenticated, user]);
 
   const value = {
@@ -66,12 +69,8 @@ export const SocketProvider = ({ children }) => {
     joinChat: (chatId) => socket?.emit('joinChat', chatId),
     leaveChat: (chatId) => socket?.emit('leaveChat', chatId),
     sendMessage: (data) => socket?.emit('sendMessage', data),
-    emitTyping: (data) => socket?.emit('typing', data)
+    emitTyping: (data) => socket?.emit('typing', data),
   };
 
-  return (
-    <SocketContext.Provider value={value}>
-      {children}
-    </SocketContext.Provider>
-  );
+  return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 };
