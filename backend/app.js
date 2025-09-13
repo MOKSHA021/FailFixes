@@ -8,7 +8,8 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/auth');
 const storyRoutes = require('./routes/stories');
 const userRoutes = require('./routes/users');
-const chatRoutes = require('./routes/chats'); // ✅ ADD CHAT ROUTES
+const chatRoutes = require('./routes/chats');
+const aiRoutes = require('./routes/ai'); // ✅ ADD AI ROUTES
 
 const app = express();
 
@@ -20,7 +21,9 @@ app.use(cors({
   origin: [
     'http://localhost:3000', 
     'http://127.0.0.1:3000',
-    'http://localhost:3001'
+    'http://localhost:3001',
+    'http://localhost:3002',  // ✅ Add any other dev port you use!
+    'http://127.0.0.1:3002'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -76,11 +79,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ API ROUTES
+// ✅ API ROUTES (ORDER DOES NOT MATTER FOR THESE)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/stories', storyRoutes);
-app.use('/api/chats', chatRoutes); // ✅ ADD CHAT ROUTES
+app.use('/api/chats', chatRoutes);
+app.use('/api/ai', aiRoutes); // ✅ ADD AI ROUTE
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -89,7 +93,7 @@ app.get('/', (req, res) => {
     message: 'FailFixes API Server',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    features: ['auth', 'stories', 'users', 'chats', 'realtime-chat'] // ✅ ADD CHAT FEATURES
+    features: ['auth', 'stories', 'users', 'chats', 'realtime-chat', 'ai-story'] // ✅ ADD AI
   });
 });
 
@@ -105,7 +109,8 @@ app.get('/api/health', (req, res) => {
       stories: 'active', 
       users: 'active',
       chats: 'active',
-      socketIO: 'active' // ✅ ADD SOCKET.IO STATUS
+      socketIO: 'active',
+      ai: 'active' // ✅ ADD AI
     }
   });
 });
@@ -121,9 +126,10 @@ app.use('*', (req, res) => {
       'POST /api/auth/login',
       'POST /api/auth/register',
       'POST /api/users/:username/follow',
-      'GET /api/chats', // ✅ ADD CHAT ROUTES
+      'GET /api/chats',
       'POST /api/chats/direct',
-      'GET /api/chats/:chatId/messages'
+      'GET /api/chats/:chatId/messages',
+      'POST /api/ai/generate-story' // ✅ AI ROUTE
     ]
   });
 });

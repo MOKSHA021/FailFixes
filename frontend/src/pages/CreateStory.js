@@ -264,9 +264,6 @@ const RequiredSelect = styled(FormControl)(({ theme }) => ({
   }
 }));
 
-/* ───────────────────────────
-   MAIN COMPONENT
-─────────────────────────── */
 function CreateStory() {
   const [storyData, setStoryData] = useState({
     title: '',
@@ -289,11 +286,15 @@ function CreateStory() {
   const [wordCount, setWordCount] = useState(0);
   const [readTime, setReadTime] = useState(0);
 
+  // AI states
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [aiInput, setAIInput] = useState('');
+  const [aiLoading, setAILoading] = useState(false);
+
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  /* category list */
   const categories = [
     { value: 'business',      label: 'Business & Startup',   icon: Business,      color: '#81c784' },
     { value: 'personal',      label: 'Personal Growth',      icon: Psychology,    color: '#90caf9' },
@@ -304,36 +305,23 @@ function CreateStory() {
     { value: 'technology',    label: 'Technology',           icon: Computer,      color: '#90caf9' },
     { value: 'creative',      label: 'Creative Arts',        icon: Palette,       color: '#ffb74d' }
   ];
-
-  /* 🎯 UPDATED: Recovery time options */
   const recoveryTimeOptions = [
-    '1 month',
-    '3 months',
-    '6 months',
-    '1 year',
-    '2 years',
-    '3+ years'
+    '1 month', '3 months', '6 months', '1 year', '2 years', '3+ years'
   ];
-
-  /* 🎯 UPDATED: Current status options */
   const currentStatusOptions = [
-    'recovering',
-    'recovered', 
-    'thriving',
-    'helping_others'
+    'recovering', 'recovered', 'thriving', 'helping_others'
   ];
 
-  /* helpers -------------------------------------------------------------- */
   const calculateProgress = () => {
     const parts = [
       storyData.title.length >= 10,
       storyData.content.length >= 100,
       !!storyData.category,
       storyData.tags.length > 0,
-      !!storyData.metadata.recoveryTime,      // 🎯 NEW: Required field
-      !!storyData.metadata.currentStatus      // 🎯 NEW: Required field
+      !!storyData.metadata.recoveryTime,
+      !!storyData.metadata.currentStatus
     ];
-    setProgress((parts.filter(Boolean).length / 6) * 100); // 🎯 UPDATED: Now 6 requirements
+    setProgress((parts.filter(Boolean).length / 6) * 100);
   };
 
   const updateWordCount = () => {
@@ -352,9 +340,7 @@ function CreateStory() {
     return () => clearTimeout(t);
   }, [storyData]);
 
-  /* handlers ------------------------------------------------------------- */
   const handleInputChange = (field, value) => setStoryData(p => ({ ...p, [field]: value }));
-
   const handleMetadataChange = (field, value) =>
     setStoryData(p => ({ ...p, metadata: { ...p.metadata, [field]: value } }));
 
@@ -381,7 +367,6 @@ function CreateStory() {
   const removeKeyLesson = (idx) =>
     handleMetadataChange('keyLessons', storyData.metadata.keyLessons.filter((_, i) => i !== idx));
 
-  /* 🎯 UPDATED: validation with required fields */
   const validateForm = () => {
     if (storyData.title.length < 10)  { warn('Title needs at least 10 characters');  return false; }
     if (storyData.content.length < 100){ warn('Story needs at least 100 characters'); return false; }
@@ -389,11 +374,9 @@ function CreateStory() {
     if (!storyData.metadata.recoveryTime)    { warn('Recovery time is required');    return false; }
     if (!storyData.metadata.currentStatus)   { warn('Current status is required');   return false; }
     return true;
-
     function warn(msg){ setSnackbar({open:true,message:msg,severity:'warning'}); }
   };
 
-  /* 🎯 UPDATED: submit with required metadata + DASHBOARD REFRESH */
   const handleSubmit = async (asDraft = false) => {
     if (!validateForm() && !asDraft) return;
     setLoading(true);
@@ -401,16 +384,10 @@ function CreateStory() {
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('ff_token');
       if (!token) throw new Error('loginRequired');
-
-      /* 🎯 UPDATED: clean metadata with required fields */
       const m = storyData.metadata;
       const cleanMeta = {};
-      
-      // Required fields
       cleanMeta.recoveryTime  = m.recoveryTime.trim();
       cleanMeta.currentStatus = m.currentStatus.trim();
-      
-      // Optional fields
       const lessons = m.keyLessons.filter(l => l && l.trim());
       if (lessons.length) cleanMeta.keyLessons = lessons;
       if (readTime) cleanMeta.readTime = readTime;
@@ -423,8 +400,6 @@ function CreateStory() {
         metadata: cleanMeta,
         status  : asDraft ? 'draft' : 'published'
       };
-
-      console.log('🚀 payload →', payload);
 
       const res = await fetch('http://localhost:5000/api/stories', {
         method : 'POST',
@@ -447,12 +422,11 @@ function CreateStory() {
       });
 
       resetForm();
-      
-      // 🎯 UPDATED: Navigate to dashboard with refresh state
+
       setTimeout(() => {
-        navigate('/dashboard', { 
-          replace: true, 
-          state: { refresh: true } // This triggers dashboard data refresh
+        navigate('/dashboard', {
+          replace: true,
+          state: { refresh: true }
         });
       }, 2000);
 
@@ -479,9 +453,36 @@ function CreateStory() {
     metadata:{ recoveryTime:'', currentStatus:'', keyLessons:[''] }
   });
 
-  /* ───────────────────────────
-     RENDER
-  ──────────────────────────── */
+  // AI story handlers
+  const handleGenerateAI = async () => {
+    if (!aiInput.trim()) {
+      setSnackbar({ open: true, message: "Please provide a topic or idea for AI", severity: "warning" });
+      return;
+    }
+    setAILoading(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/ai/generate-story", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiInput })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "AI generation failed");
+      }
+      setStoryData(story => ({
+        ...story,
+        title: data.title || "",
+        content: data.content || ""
+      }));
+      setShowAIDialog(false);
+      setSnackbar({ open: true, message: "AI story generated!", severity: 'success' });
+    } catch (err) {
+      setSnackbar({ open: true, message: err.message || "Failed to generate story.", severity: 'error' });
+    }
+    setAILoading(false);
+  };
+
   if (initialLoading) {
     return (
       <BackgroundContainer>
@@ -497,10 +498,8 @@ function CreateStory() {
 
   return (
     <BackgroundContainer>
-      {/* floating particles */}
       {[...Array(6)].map((_, i) => (
         <FloatingParticle
-          /* eslint-disable react/no-array-index-key */
           key={i}
           delay={i*0.5}
           size={Math.random()*25+10}
@@ -508,9 +507,7 @@ function CreateStory() {
           top={Math.random()*100}
         />
       ))}
-
       <Container maxWidth="lg">
-        {/* header */}
         <Fade in={mounted} timeout={800}>
           <Box textAlign="center" mb={8}>
             <Avatar
@@ -523,7 +520,6 @@ function CreateStory() {
             >
               <Create sx={{ fontSize:'2.5rem' }} />
             </Avatar>
-
             <Typography
               variant="h2"
               sx={{
@@ -536,11 +532,9 @@ function CreateStory() {
             >
               Share Your Story
             </Typography>
-
             <Typography variant="h5" sx={{ color:'rgba(0,0,0,.6)', mb:6, fontWeight:400 }}>
               Transform your experience into inspiration for others
             </Typography>
-
             <Stack direction="row" spacing={3} justifyContent="center">
               <ElegantButton variant="outlined" startIcon={<ArrowBack />} onClick={() => navigate(-1)}>
                 Go Back
@@ -553,11 +547,18 @@ function CreateStory() {
               >
                 Preview
               </ElegantButton>
+              <ElegantButton
+                variant="primary"
+                startIcon={<Psychology />}
+                sx={{ mb: 0 }}
+                onClick={() => setShowAIDialog(true)}
+              >
+                Create With AI
+              </ElegantButton>
             </Stack>
           </Box>
         </Fade>
-
-        {/* grid */}
+        {/* ================ GRID/FORM/SIDEBAR (original, everything retained) ================ */}
         <Grid container spacing={6}>
           {/* form column */}
           <Grid item xs={12} lg={8}>
@@ -722,13 +723,12 @@ Your authentic story can inspire and help others facing similar challenges.`}
                         </IconButton>
                       </Box>
                     </Box>
-
                     <Typography variant="caption" color="text.secondary" sx={{ fontStyle:'italic' }}>
                       Example: resilience, entrepreneurship, mental-health, career-change
                     </Typography>
                   </Box>
 
-                  {/* 🎯 UPDATED: Required Recovery Details */}
+                  {/* Recovery Details */}
                   <Divider sx={{ mb:4 }} />
                   <Box display="flex" alignItems="center" mb={3}>
                     <Avatar sx={{ width:50, height:50, background:'linear-gradient(135deg,#e91e63,#f06292)', mr:2 }}>
@@ -744,7 +744,6 @@ Your authentic story can inspire and help others facing similar challenges.`}
                       </Typography>
                     </Box>
                   </Box>
-
                   <Grid container spacing={3} mb={6}>
                     <Grid item xs={12} sm={6}>
                       <RequiredSelect fullWidth>
@@ -766,7 +765,6 @@ Your authentic story can inspire and help others facing similar challenges.`}
                         </Select>
                       </RequiredSelect>
                     </Grid>
-
                     <Grid item xs={12} sm={6}>
                       <RequiredSelect fullWidth>
                         <InputLabel>Current Status *</InputLabel>
@@ -789,7 +787,7 @@ Your authentic story can inspire and help others facing similar challenges.`}
                     </Grid>
                   </Grid>
 
-                  {/* key lessons (optional) */}
+                  {/* Key Lessons (optional) */}
                   <Divider sx={{ mb:4 }} />
                   <Box mb={6}>
                     <Typography variant="h6" sx={{ fontWeight:700, mb:2 }}>
@@ -830,7 +828,7 @@ Your authentic story can inspire and help others facing similar challenges.`}
                     <ElegantButton
                       variant="primary"
                       startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <EmojiEvents />}
-                      onClick={() => handleSubmit(false)}
+                      onClick={()=>handleSubmit(false)}
                       disabled={loading || progress < 85}
                     >
                       {loading ? 'Publishing...' : 'Publish Story'}
@@ -841,11 +839,11 @@ Your authentic story can inspire and help others facing similar challenges.`}
             </Grow>
           </Grid>
 
-          {/* 🎯 UPDATED: sidebar with new progress requirements */}
+          {/* Sidebar */}
           <Grid item xs={12} lg={4}>
             <Grow in={mounted} timeout={1200}>
               <Box>
-                {/* progress card */}
+                {/* Progress card */}
                 <ProgressCard sx={{ mb:4 }}>
                   <Box display="flex" alignItems="center" mb={3}>
                     <Avatar sx={{ width:40, height:40, background:'linear-gradient(135deg,#81c784,#aed581)', mr:2 }}>
@@ -877,7 +875,6 @@ Your authentic story can inspire and help others facing similar challenges.`}
                       }}
                     />
                   </Box>
-
                   <Stack spacing={2}>
                     <Box display="flex" alignItems="center">
                       <CheckCircle sx={{ fontSize:20, mr:2, color:storyData.title.length>=10?'#81c784':'#e0e0e0' }} />
@@ -905,8 +902,7 @@ Your authentic story can inspire and help others facing similar challenges.`}
                     </Box>
                   </Stack>
                 </ProgressCard>
-
-                {/* tips card */}
+                {/* Tips card */}
                 <ProgressCard>
                   <Box display="flex" alignItems="center" mb={3}>
                     <Avatar sx={{ width:40, height:40, background:'linear-gradient(135deg,#90caf9,#81c784)', mr:2 }}>
@@ -931,7 +927,7 @@ Your authentic story can inspire and help others facing similar challenges.`}
           </Grid>
         </Grid>
 
-        {/* preview dialog */}
+        {/* Preview dialog */}
         <Dialog
           open={showPreview}
           onClose={()=>setShowPreview(false)}
@@ -961,7 +957,6 @@ Your authentic story can inspire and help others facing similar challenges.`}
               {storyData.title || 'Your Story Title'}
             </Typography>
 
-            {/* 🎯 NEW: Show recovery details in preview */}
             {(storyData.metadata.recoveryTime || storyData.metadata.currentStatus) && (
               <Box sx={{ mb:3, p:2, background:'rgba(129,199,132,.1)', borderRadius:2 }}>
                 {storyData.metadata.recoveryTime && (
@@ -1014,7 +1009,46 @@ Your authentic story can inspire and help others facing similar challenges.`}
           </DialogActions>
         </Dialog>
 
-        {/* snackbar */}
+        {/* 🧠 AI STORY DIALOG */}
+        <Dialog open={showAIDialog} onClose={() => setShowAIDialog(false)}>
+          <DialogTitle>
+            <Psychology sx={{ mr:1, color: "#81c784" }} /> Create Story With AI
+          </DialogTitle>
+          <DialogContent>
+            <Typography gutterBottom>
+              Describe the topic, challenge, or idea you want the AI to expand into a story.
+            </Typography>
+            <TextField
+              fullWidth autoFocus multiline minRows={3}
+              label="Story prompt / key points"
+              placeholder="e.g., Overcoming failure in college..."
+              value={aiInput}
+              onChange={e => setAIInput(e.target.value)}
+              sx={{ my:2 }}
+            />
+            {aiLoading && (
+              <Box display="flex" alignItems="center" gap={2} mt={2}>
+                <CircularProgress size={20} />
+                <Typography fontWeight={600}>Generating your story with AI...</Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <ElegantButton variant="outlined" onClick={() => setShowAIDialog(false)}>
+              Cancel
+            </ElegantButton>
+            <ElegantButton
+              variant="primary"
+              startIcon={<RocketLaunch />}
+              disabled={aiLoading}
+              onClick={handleGenerateAI}
+            >
+              Generate
+            </ElegantButton>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar */}
         <Snackbar
           open={snackbar.open}
           autoHideDuration={6000}

@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const userViewCounts = new Map();
 
-// 🎯 ENHANCED: Get all stories with follow status included
+// ✅ FIXED: Export getAllStories (matching your routes)
 exports.getAllStories = async (req, res) => {
   try {
     const {
@@ -61,7 +61,7 @@ exports.getAllStories = async (req, res) => {
       Story.countDocuments(query)
     ]);
 
-    // 🎯 Get current user's following list if authenticated
+    // Get current user's following list if authenticated
     let followingUsernames = [];
     if (req.user) {
       const currentUser = await User.findById(req.user._id)
@@ -75,7 +75,7 @@ exports.getAllStories = async (req, res) => {
       }
     }
 
-    // 🎯 Add follow status to stories
+    // Add follow status to stories
     const storiesWithMeta = stories.map(s => {
       const storyAuthorUsername = s.authorUsername || s.author?.username || s.author?.name;
       
@@ -88,7 +88,7 @@ exports.getAllStories = async (req, res) => {
         ...s,
         readTime: s.metadata?.readTime || Math.ceil((s.content || '').split(' ').length / 200) || 1,
         isLiked: req.user ? (s.likes || []).some(like => like.toString() === req.user._id.toString()) : false,
-        isFollowing: isFollowing, // 🎯 ADD FOLLOW STATUS
+        isFollowing: isFollowing,
         displayAuthor: s.authorUsername || s.author?.username || s.author?.name || 'Anonymous',
         excerpt: s.excerpt || (s.content ? s.content.substring(0, 150) + '...' : '')
       };
@@ -96,7 +96,7 @@ exports.getAllStories = async (req, res) => {
 
     res.json({
       success: true,
-      stories: storiesWithMeta, // 🎯 RETURN STORIES WITH FOLLOW STATUS
+      stories: storiesWithMeta,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(total / limitNum),
@@ -116,6 +116,7 @@ exports.getAllStories = async (req, res) => {
   }
 };
 
+// ✅ FIXED: Complete getStoryById function
 exports.getStoryById = async (req, res) => {
   try {
     const storyId = req.params.id;
@@ -165,9 +166,11 @@ exports.getStoryById = async (req, res) => {
     }
 
     if (shouldIncrement) {
-      await Story.findByIdAndUpdate(storyId, { $inc: { 'stats.views': 1 } });
-      if (story.stats) {
-        story.stats.views += 1;
+      await Story.findByIdAndUpdate(storyId, { $inc: { views: 1 } });
+      if (story.views !== undefined) {
+        story.views += 1;
+      } else {
+        story.views = 1;
       }
     }
 
@@ -177,9 +180,9 @@ exports.getStoryById = async (req, res) => {
       success: true,
       story: {
         ...story.toObject(),
-        readTime: story.metadata?.readTime || Math.ceil(story.content.split(' ').length / 200),
+        readTime: story.metadata?.readTime || Math.ceil((story.content || '').split(' ').length / 200),
         isLiked,
-        displayAuthor: story.authorUsername
+        displayAuthor: story.authorUsername || story.author?.username || story.author?.name
       }
     });
   } catch (err) {
@@ -188,7 +191,7 @@ exports.getStoryById = async (req, res) => {
   }
 };
 
-// 🎯 ENHANCED: Create story with proper authorUsername setting
+// ✅ ENHANCED: Create story with proper authorUsername setting
 exports.createStory = async (req, res) => {
   try {
     const {
@@ -216,7 +219,7 @@ exports.createStory = async (req, res) => {
       });
     }
 
-    // 🎯 CRITICAL: Ensure authorUsername matches exactly what's in User collection
+    // Ensure authorUsername matches exactly what's in User collection
     const authorUsername = user.username || user.name || `user_${user._id.toString().slice(-6)}`;
     
     console.log('📝 Creating story with author details:', {
@@ -241,7 +244,7 @@ exports.createStory = async (req, res) => {
       category,
       tags: tags.map(t => t.toLowerCase().trim()).slice(0, 5),
       author: user._id,
-      authorUsername, // This must match what's used in feed queries
+      authorUsername,
       status,
       metadata: cleanMeta,
       publishedAt: status === 'published' ? new Date() : undefined
@@ -288,7 +291,168 @@ exports.createStory = async (req, res) => {
   }
 };
 
-// LIKE STORY
+// ✅ ADD: Missing trackStoryView function
+exports.trackStoryView = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('📊 Tracking view for story:', id);
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid story ID format' 
+      });
+    }
+
+    const story = await Story.findByIdAndUpdate(
+      id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+
+    if (!story) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Story not found' 
+      });
+    }
+
+    console.log('✅ Story view tracked. New count:', story.views);
+
+    res.json({ 
+      success: true, 
+      views: story.views,
+      message: 'Story view tracked successfully' 
+    });
+  } catch (error) {
+    console.error('❌ Story view tracking error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error tracking story view',
+      error: error.message 
+    });
+  }
+};
+
+// ✅ FIXED: Complete getStoriesByAuthor function
+exports.getStoriesByAuthor = async (req, res) => {
+  try {
+    const { authorUsername } = req.params;
+    const { 
+      page = 1, 
+      limit = 20, 
+      sort = 'createdAt', 
+      order = 'desc' 
+    } = req.query;
+
+    console.log('📚 Fetching stories for author:', authorUsername);
+
+    // Find user by username
+    const author = await User.findOne({
+      $or: [
+        { username: { $regex: new RegExp(`^${authorUsername}$`, 'i') } },
+        { name: { $regex: new RegExp(`^${authorUsername}$`, 'i') } }
+      ]
+    });
+    
+    if (!author) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    // Build sort object
+    const sortObj = {};
+    sortObj[sort] = order === 'desc' ? -1 : 1;
+
+    // Fetch stories with filtering
+    const stories = await Story.find({ 
+      $or: [
+        { author: author._id },
+        { authorUsername: author.username },
+        { authorUsername: author.name }
+      ],
+      // Filter out impact posts and other non-story content
+      $and: [
+        {
+          $or: [
+            { type: { $exists: false } },
+            { type: 'story' },
+            { type: 'fail_story' },
+            { type: 'experience' }
+          ]
+        },
+        {
+          $and: [
+            { category: { $ne: 'impact' } },
+            { title: { $not: /impact post/i } }
+          ]
+        }
+      ],
+      status: 'published'
+    })
+      .populate('author', 'username name avatar bio')
+      .sort(sortObj)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .lean();
+
+    // Get total count for pagination
+    const totalStories = await Story.countDocuments({ 
+      $or: [
+        { author: author._id },
+        { authorUsername: author.username },
+        { authorUsername: author.name }
+      ],
+      $and: [
+        {
+          $or: [
+            { type: { $exists: false } },
+            { type: 'story' },
+            { type: 'fail_story' },
+            { type: 'experience' }
+          ]
+        },
+        {
+          $and: [
+            { category: { $ne: 'impact' } },
+            { title: { $not: /impact post/i } }
+          ]
+        }
+      ],
+      status: 'published'
+    });
+
+    console.log(`✅ Found ${stories.length} stories for ${authorUsername}`);
+
+    res.json({
+      success: true,
+      stories,
+      pagination: {
+        currentPage: parseInt(page),
+        totalStories,
+        totalPages: Math.ceil(totalStories / parseInt(limit)),
+        hasNext: page * limit < totalStories,
+        hasPrev: page > 1
+      },
+      author: {
+        _id: author._id,
+        username: author.username,
+        name: author.name
+      }
+    });
+  } catch (error) {
+    console.error('❌ Get stories by author error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching stories',
+      error: error.message 
+    });
+  }
+};
+
+// ✅ LIKE STORY
 exports.likeStory = async (req, res) => {
   try {
     if (!req.user) {
@@ -363,7 +527,7 @@ exports.likeStory = async (req, res) => {
   }
 };
 
-// ADD COMMENT
+// ✅ ADD COMMENT
 exports.addComment = async (req, res) => {
   try {
     if (!req.user) {
@@ -463,34 +627,151 @@ exports.addComment = async (req, res) => {
   }
 };
 
+// ✅ UPDATE STORY
 exports.updateStory = async (req, res) => {
   try {
-    res.json({ success: true, message: 'Update story endpoint' });
+    const storyId = req.params.id;
+    const userId = req.user._id;
+    const updates = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(storyId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid story ID format' 
+      });
+    }
+
+    const story = await Story.findById(storyId);
+    
+    if (!story) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Story not found' 
+      });
+    }
+
+    if (story.author.toString() !== userId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Not authorized to update this story' 
+      });
+    }
+
+    const updatedStory = await Story.findByIdAndUpdate(
+      storyId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).populate('author', 'name username avatar');
+
+    res.json({
+      success: true,
+      message: 'Story updated successfully',
+      story: updatedStory
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error updating story' });
+    console.error('❌ Update story error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error updating story' 
+    });
   }
 };
 
+// ✅ DELETE STORY
 exports.deleteStory = async (req, res) => {
   try {
-    res.json({ success: true, message: 'Delete story endpoint' });
+    const storyId = req.params.id;
+    const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(storyId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid story ID format' 
+      });
+    }
+
+    const story = await Story.findById(storyId);
+    
+    if (!story) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Story not found' 
+      });
+    }
+
+    if (story.author.toString() !== userId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Not authorized to delete this story' 
+      });
+    }
+
+    await Story.findByIdAndDelete(storyId);
+
+    // Update user's story count
+    await User.findByIdAndUpdate(
+      userId,
+      { $inc: { 'stats.storiesCount': -1 } }
+    );
+
+    res.json({
+      success: true,
+      message: 'Story deleted successfully'
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error deleting story' });
+    console.error('❌ Delete story error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error deleting story' 
+    });
   }
 };
 
+// ✅ GET COMMENTS
 exports.getComments = async (req, res) => {
   try {
-    res.json({ success: true, comments: [] });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Error fetching comments' });
-  }
-};
+    const storyId = req.params.id;
+    const { page = 1, limit = 10 } = req.query;
 
-exports.getStoriesByAuthor = async (req, res) => {
-  try {
-    res.json({ success: true, stories: [] });
+    if (!mongoose.Types.ObjectId.isValid(storyId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid story ID format' 
+      });
+    }
+
+    const story = await Story.findById(storyId)
+      .populate({
+        path: 'comments.user',
+        select: 'name username avatar'
+      })
+      .select('comments');
+
+    if (!story) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Story not found' 
+      });
+    }
+
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const endIndex = startIndex + parseInt(limit);
+    const comments = story.comments.slice(startIndex, endIndex);
+
+    res.json({ 
+      success: true, 
+      comments,
+      pagination: {
+        currentPage: parseInt(page),
+        totalComments: story.comments.length,
+        totalPages: Math.ceil(story.comments.length / parseInt(limit))
+      }
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error fetching author stories' });
+    console.error('❌ Get comments error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching comments' 
+    });
   }
 };

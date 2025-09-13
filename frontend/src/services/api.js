@@ -60,14 +60,23 @@ export const storiesAPI = {
     return api.get(`/stories?${queryParams.toString()}`);
   },
 
-  getStoriesByAuthor: (authorUsername, params = {}) => {
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        queryParams.append(key, value);
-      }
-    });
-    return api.get(`/stories/author/${authorUsername}?${queryParams.toString()}`);
+  // ✅ FIXED: Updated to match UserProfile component needs
+  getStoriesByAuthor: async (authorUsername, params = {}) => {
+    try {
+      console.log('📡 Fetching stories for author:', authorUsername);
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, value);
+        }
+      });
+      const response = await api.get(`/stories/author/${authorUsername}?${queryParams.toString()}`);
+      console.log('✅ Stories API response:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ Stories fetch error:', error);
+      throw error;
+    }
   },
 
   getStoryById: (id) => api.get(`/stories/${id}`),
@@ -75,6 +84,20 @@ export const storiesAPI = {
   updateStory: (id, storyData) => api.put(`/stories/${id}`, storyData),
   deleteStory: (id) => api.delete(`/stories/${id}`),
   likeStory: (id) => api.patch(`/stories/${id}/like`),
+  
+  // ✅ ADD: Track story view
+  trackStoryView: async (storyId) => {
+    try {
+      console.log('📊 Tracking story view:', storyId);
+      const response = await api.post(`/stories/${storyId}/view`);
+      console.log('✅ Story view tracked:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ Story view tracking error:', error);
+      throw error;
+    }
+  },
+
   addComment: (id, commentData) => api.post(`/stories/${id}/comment`, commentData),
   getComments: (id, params = {}) => {
     const queryParams = new URLSearchParams();
@@ -134,7 +157,31 @@ export const dashboardAPI = {
 };
 
 export const userAPI = {
-  getUserProfile: (username) => api.get(`/users/profile/${username}`),
+  // ✅ FIXED: Updated to match UserProfile component needs
+  getUserProfile: async (username) => {
+    try {
+      console.log('📡 Fetching user profile:', username);
+      const response = await api.get(`/users/profile/${username}`);
+      console.log('✅ User profile API response:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ User profile fetch error:', error);
+      throw error;
+    }
+  },
+
+  // ✅ ADD: Track profile view
+  trackProfileView: async (profileId) => {
+    try {
+      console.log('📊 Tracking profile view:', profileId);
+      const response = await api.post(`/users/profile/${profileId}/view`);
+      console.log('✅ Profile view tracked:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ Profile view tracking error:', error);
+      throw error;
+    }
+  },
   
   followUser: async (username) => {
     try {
@@ -193,7 +240,6 @@ export const userAPI = {
 
   getSuggestedUsers: () => api.get('/users/suggested'),
 
-  // ✅ ADD SEARCH USERS METHOD
   searchUsers: (params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -208,20 +254,18 @@ export const userAPI = {
 export const usersAPI = {
   followUser: userAPI.followUser,
   getUserProfile: userAPI.getUserProfile,
+  trackProfileView: userAPI.trackProfileView,
   getUserFollowers: userAPI.getUserFollowers,
   getUserFollowing: userAPI.getUserFollowing,
   getUserFeed: userAPI.getUserFeed,
   getSuggestedUsers: userAPI.getSuggestedUsers,
   updateProfile: (profileData) => api.put('/users/me/profile', profileData),
-  searchUsers: userAPI.searchUsers // ✅ ADD THIS
+  searchUsers: userAPI.searchUsers
 };
 
-// ✅ ADD CHAT API
 export const chatAPI = {
   getChats: () => api.get('/chats'),
-  
   createDirectChat: (userId) => api.post('/chats/direct', { userId }),
-  
   getChatMessages: (chatId, params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
