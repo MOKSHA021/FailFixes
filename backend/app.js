@@ -23,7 +23,8 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:3002',
   'http://127.0.0.1:3002',
-  'https://failfixes-frontend.onrender.com', // ✅ Add your frontend URL
+  'https://failfixes-frontend.onrender.com',
+  'https://failfixes.onrender.com', // ✅ Add your frontend URL
   process.env.FRONTEND_URL // ✅ From environment variable
 ].filter(Boolean); // Remove undefined values
 
