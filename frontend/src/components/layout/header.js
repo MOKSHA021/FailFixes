@@ -1,17 +1,17 @@
-
 import React, { useState } from 'react';
 import {
   AppBar, Toolbar, Typography, Button, IconButton, Avatar, Menu, MenuItem,
   Box, Container, Drawer, List, ListItem, ListItemIcon, ListItemText,
-  useTheme, useMediaQuery, Badge, Divider
+  useTheme, useMediaQuery, Divider
 } from '@mui/material';
 import {
   AutoFixHigh, Menu as MenuIcon, Dashboard, Create, Explore, Person,
-  Settings, Logout, Notifications, Login, PersonAdd, Home, Close, Chat
+  Settings, Logout, Login, PersonAdd, Home, Close, Chat
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+
 
 // Animations
 const gentleFloat = keyframes`
@@ -23,6 +23,7 @@ const gentleFloat = keyframes`
   }
 `;
 
+
 const softGlow = keyframes`
   0%, 100% { 
     box-shadow: 0 0 15px rgba(129, 199, 132, 0.2), 0 0 30px rgba(129, 199, 132, 0.1); 
@@ -31,6 +32,7 @@ const softGlow = keyframes`
     box-shadow: 0 0 25px rgba(129, 199, 132, 0.3), 0 0 40px rgba(129, 199, 132, 0.15); 
   }
 `;
+
 
 // Styled Components
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
@@ -54,6 +56,7 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
   `,
 }));
 
+
 const LogoContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
@@ -64,6 +67,7 @@ const LogoContainer = styled(Box)(({ theme }) => ({
     transform: 'scale(1.02)',
   }
 }));
+
 
 const ElegantButton = styled(Button)(({ theme, variant: buttonVariant, active }) => ({
   borderRadius: '16px',
@@ -112,6 +116,7 @@ const ElegantButton = styled(Button)(({ theme, variant: buttonVariant, active })
   })
 }));
 
+
 const StyledDrawer = styled(Drawer)(({ theme }) => ({
   '& .MuiDrawer-paper': {
     width: 280,
@@ -130,6 +135,7 @@ const StyledDrawer = styled(Drawer)(({ theme }) => ({
     `,
   }
 }));
+
 
 const DrawerHeader = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -152,6 +158,7 @@ const DrawerHeader = styled(Box)(({ theme }) => ({
   }
 }));
 
+
 const DrawerListItem = styled(ListItem)(({ theme, active }) => ({
   borderRadius: '12px',
   margin: theme.spacing(0.5, 2),
@@ -167,6 +174,7 @@ const DrawerListItem = styled(ListItem)(({ theme, active }) => ({
     border: '1px solid rgba(129, 199, 132, 0.3)',
   }
 }));
+
 
 const ProfileMenu = styled(Menu)(({ theme }) => ({
   '& .MuiPaper-root': {
@@ -208,6 +216,7 @@ const ProfileMenu = styled(Menu)(({ theme }) => ({
   }
 }));
 
+
 function Header() {
   const { user, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
@@ -218,32 +227,37 @@ function Header() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ UPDATED NAVIGATION WITH MESSAGES
+
   const navigation = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Browse', path: '/browse', icon: Explore },
     ...(isAuthenticated ? [
       { name: 'Write', path: '/write', icon: Create },
       { name: 'Dashboard', path: '/dashboard', icon: Dashboard },
-      { name: 'Messages', path: '/chat', icon: Chat } // ✅ ADD MESSAGES
+      { name: 'Messages', path: '/chat', icon: Chat }
     ] : [])
   ];
 
+
   const isActive = (path) => location.pathname === path;
+
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
+
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
+
 
   const handleLogout = () => {
     logout();
     navigate('/');
     handleMenuClose();
   };
+
 
   const renderDesktopNav = () => (
     <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
@@ -260,6 +274,7 @@ function Header() {
       ))}
     </Box>
   );
+
 
   const renderMobileDrawer = () => (
     <StyledDrawer
@@ -315,6 +330,7 @@ function Header() {
         ))}
       </List>
 
+
       {isAuthenticated && (
         <>
           <Divider sx={{ mx: 2, my: 2 }} />
@@ -335,6 +351,7 @@ function Header() {
         </>
       )}
 
+
       <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
         <IconButton 
           onClick={() => setMobileOpen(false)}
@@ -348,6 +365,7 @@ function Header() {
       </Box>
     </StyledDrawer>
   );
+
 
   return (
     <>
@@ -371,6 +389,7 @@ function Header() {
               </IconButton>
             )}
 
+
             <LogoContainer onClick={() => navigate('/')} sx={{ flexGrow: isMobile ? 1 : 0 }}>
               <Avatar sx={{ 
                 background: 'linear-gradient(135deg, #81c784, #aed581)',
@@ -390,45 +409,32 @@ function Header() {
               </Box>
             </LogoContainer>
 
+
             <Box sx={{ flexGrow: 1 }} />
+
 
             {renderDesktopNav()}
 
+
             <Box sx={{ ml: 2 }}>
               {isAuthenticated ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton
-                    sx={{ 
-                      background: 'rgba(129, 199, 132, 0.1)',
-                      '&:hover': { 
-                        background: 'rgba(129, 199, 132, 0.2)',
-                        transform: 'translateY(-1px)'
-                      }
-                    }}
-                  >
-                    <Badge badgeContent={2} color="error" variant="dot">
-                      <Notifications sx={{ color: '#81c784' }} />
-                    </Badge>
-                  </IconButton>
-                  
-                  <Avatar
-                    onClick={handleProfileMenuOpen}
-                    sx={{ 
-                      cursor: 'pointer',
-                      background: 'linear-gradient(135deg, #81c784, #aed581)',
-                      width: 44,
-                      height: 44,
-                      fontWeight: 700,
-                      transition: 'all 0.3s ease',
-                      '&:hover': { 
-                        transform: 'scale(1.1)',
-                        boxShadow: '0 4px 16px rgba(129, 199, 132, 0.3)'
-                      }
-                    }}
-                  >
-                    {user?.name?.charAt(0) || 'U'}
-                  </Avatar>
-                </Box>
+                <Avatar
+                  onClick={handleProfileMenuOpen}
+                  sx={{ 
+                    cursor: 'pointer',
+                    background: 'linear-gradient(135deg, #81c784, #aed581)',
+                    width: 44,
+                    height: 44,
+                    fontWeight: 700,
+                    transition: 'all 0.3s ease',
+                    '&:hover': { 
+                      transform: 'scale(1.1)',
+                      boxShadow: '0 4px 16px rgba(129, 199, 132, 0.3)'
+                    }
+                  }}
+                >
+                  {user?.name?.charAt(0) || 'U'}
+                </Avatar>
               ) : (
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <ElegantButton
@@ -451,6 +457,7 @@ function Header() {
           </Toolbar>
         </Container>
       </StyledAppBar>
+
 
       {renderMobileDrawer()}
 
@@ -485,5 +492,6 @@ function Header() {
     </>
   );
 }
+
 
 export default Header;
