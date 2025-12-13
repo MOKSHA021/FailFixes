@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// ✅ Base URL: includes /api and has NO trailing slash
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+console.log('🔗 API Base URL:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -39,6 +43,7 @@ api.interceptors.response.use(
   }
 );
 
+// STORIES
 export const storiesAPI = {
   getAllStories: (params = {}) => {
     const queryParams = new URLSearchParams();
@@ -69,7 +74,9 @@ export const storiesAPI = {
           queryParams.append(key, value);
         }
       });
-      const response = await api.get(`/stories/author/${authorUsername}?${queryParams.toString()}`);
+      const response = await api.get(
+        `/stories/author/${authorUsername}?${queryParams.toString()}`
+      );
       console.log('✅ Stories API response:', response.data);
       return response;
     } catch (error) {
@@ -79,16 +86,16 @@ export const storiesAPI = {
   },
 
   getStoryById: (id) => api.get(`/stories/${id}`),
-  
+
   createStory: (storyData) => api.post('/stories', storyData),
-  
+
   updateStory: (id, storyData) => api.put(`/stories/${id}`, storyData),
-  
+
   deleteStory: (id) => api.delete(`/stories/${id}`),
-  
+
   likeStory: (id) => api.patch(`/stories/${id}/like`),
-  
-  // ✅ UPDATED: Increment story view count
+
+  // ✅ Increment story view count
   incrementView: async (storyId) => {
     try {
       console.log('📊 Incrementing view for story:', storyId);
@@ -97,18 +104,15 @@ export const storiesAPI = {
       return response;
     } catch (error) {
       console.error('❌ View increment error:', error);
-      // Don't throw error - view tracking shouldn't break the app
-      return null;
+      return null; // non‑fatal
     }
   },
 
-  // Alias for backward compatibility
-  trackStoryView: async (storyId) => {
-    return storiesAPI.incrementView(storyId);
-  },
+  // Backward compatibility
+  trackStoryView: async (storyId) => storiesAPI.incrementView(storyId),
 
   addComment: (id, commentData) => api.post(`/stories/${id}/comment`, commentData),
-  
+
   getComments: (id, params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -119,26 +123,29 @@ export const storiesAPI = {
     return api.get(`/stories/${id}/comments?${queryParams.toString()}`);
   },
 
-  deleteComment: (storyId, commentId) => api.delete(`/stories/${storyId}/comments/${commentId}`),
-  
-  updateComment: (storyId, commentId, commentData) => 
-    api.put(`/stories/${storyId}/comments/${commentId}`, commentData)
+  deleteComment: (storyId, commentId) =>
+    api.delete(`/stories/${storyId}/comments/${commentId}`),
+
+  updateComment: (storyId, commentId, commentData) =>
+    api.put(`/stories/${storyId}/comments/${commentId}`, commentData),
 };
 
+// AUTH
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
   getMe: () => api.get('/auth/me'),
   updateProfile: (userData) => api.put('/auth/profile', userData),
   changePassword: (passwordData) => api.put('/auth/change-password', passwordData),
-  logout: () => api.post('/auth/logout')
+  logout: () => api.post('/auth/logout'),
 };
 
+// DASHBOARD
 export const dashboardAPI = {
   testConnection: () => api.get('/health'),
   testUserRoutes: () => api.get('/users/test'),
   debugUserStories: () => api.get('/users/debug/stories'),
-  
+
   getDashboard: async () => {
     try {
       console.log('🔄 Fetching dashboard data from:', `${API_BASE_URL}/users/dashboard`);
@@ -149,14 +156,14 @@ export const dashboardAPI = {
       console.error('❌ Dashboard API error:', {
         message: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        data: error.response?.data,
       });
       throw error;
     }
   },
 
   getUserStats: () => api.get('/users/me/stats'),
-  
+
   getUserStories: (params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -166,14 +173,15 @@ export const dashboardAPI = {
     });
     return api.get(`/users/me/stories?${queryParams.toString()}`);
   },
-  
+
   getUserAnalytics: () => api.get('/users/me/analytics'),
   getLikedStories: () => api.get('/users/me/liked-stories'),
   getUserActivity: () => api.get('/users/me/activity'),
   getUserProfile: () => api.get('/users/me/profile'),
-  updateUserProfile: (profileData) => api.put('/users/me/profile', profileData)
+  updateUserProfile: (profileData) => api.put('/users/me/profile', profileData),
 };
 
+// USERS
 export const userAPI = {
   getUserProfile: async (username) => {
     try {
@@ -187,7 +195,6 @@ export const userAPI = {
     }
   },
 
-  // ✅ UPDATED: Track profile view
   incrementProfileView: async (username) => {
     try {
       console.log('📊 Incrementing profile view:', username);
@@ -196,16 +203,12 @@ export const userAPI = {
       return response;
     } catch (error) {
       console.error('❌ Profile view increment error:', error);
-      // Don't throw error - view tracking shouldn't break the app
       return null;
     }
   },
 
-  // Alias for backward compatibility
-  trackProfileView: async (username) => {
-    return userAPI.incrementProfileView(username);
-  },
-  
+  trackProfileView: async (username) => userAPI.incrementProfileView(username),
+
   followUser: async (username) => {
     try {
       console.log('📡 Following user via API:', username);
@@ -264,7 +267,7 @@ export const userAPI = {
         success: response.data.success,
         storiesCount: response.data.stories?.length || 0,
         totalStories: response.data.pagination?.totalStories || 0,
-        debug: response.data.debug
+        debug: response.data.debug,
       });
       return response;
     } catch (error) {
@@ -285,7 +288,7 @@ export const userAPI = {
     return api.get(`/users/search?${queryParams.toString()}`);
   },
 
-  updateProfile: (profileData) => api.put('/users/me/profile', profileData)
+  updateProfile: (profileData) => api.put('/users/me/profile', profileData),
 };
 
 export const usersAPI = {
@@ -299,14 +302,15 @@ export const usersAPI = {
   getUserFeed: userAPI.getUserFeed,
   getSuggestedUsers: userAPI.getSuggestedUsers,
   updateProfile: userAPI.updateProfile,
-  searchUsers: userAPI.searchUsers
+  searchUsers: userAPI.searchUsers,
 };
 
+// CHATS
 export const chatAPI = {
   getChats: () => api.get('/chats'),
-  
+
   createDirectChat: (userId) => api.post('/chats/direct', { userId }),
-  
+
   getChatMessages: (chatId, params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -318,23 +322,23 @@ export const chatAPI = {
   },
 
   sendMessage: (chatId, messageData) => api.post(`/chats/${chatId}/messages`, messageData),
-  
+
   markChatAsRead: (chatId) => api.put(`/chats/${chatId}/read`),
-  
-  deleteChat: (chatId) => api.delete(`/chats/${chatId}`)
+
+  deleteChat: (chatId) => api.delete(`/chats/${chatId}`),
 };
 
+// ANALYTICS
 export const analyticsAPI = {
   getStoryPerformance: (id) => api.get(`/stories/${id}/analytics`),
-  
+
   getViewTrends: (period = '30d') => api.get(`/users/me/trends?period=${period}`),
-  
+
   getEngagementMetrics: () => api.get('/users/me/engagement'),
-  
+
   getStoryAnalytics: (id) => api.get(`/stories/${id}/analytics`),
-  
-  getUserAnalytics: () => api.get('/users/me/analytics')
+
+  getUserAnalytics: () => api.get('/users/me/analytics'),
 };
 
-// ✅ Export the base api instance as default
 export default api;
