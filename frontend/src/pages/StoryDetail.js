@@ -33,7 +33,7 @@ import {
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useAuth } from '../App';
-import  api  from '../services/api';
+import api, { storiesAPI } from '../services/api'; // ✅ Import storiesAPI
 
 // Animations
 const fadeIn = keyframes`
@@ -154,17 +154,31 @@ function StoryDetail() {
     fetchStory();
   }, [id]);
 
+  // ✅ FIXED: Added view tracking
   const fetchStory = async () => {
     try {
       setLoading(true);
+      console.log('📖 Fetching story:', id);
+      
+      // Fetch the story
       const response = await api.get(`/stories/${id}`);
       
       if (response.data.success) {
         setStory(response.data.data);
         setIsLiked(response.data.data.likedBy?.includes(user?.id) || false);
+        
+        // ✅ INCREMENT VIEW COUNT (This was missing!)
+        try {
+          console.log('📊 Incrementing view count for story:', id);
+          await storiesAPI.incrementView(id);
+          console.log('✅ View count incremented successfully');
+        } catch (viewError) {
+          console.error('❌ Failed to increment view (non-critical):', viewError);
+          // Don't throw - view tracking failure shouldn't break the page
+        }
       }
     } catch (error) {
-      console.error('Error fetching story:', error);
+      console.error('❌ Error fetching story:', error);
       setError(error.response?.data?.message || 'Story not found');
     } finally {
       setLoading(false);

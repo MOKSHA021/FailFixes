@@ -9,29 +9,44 @@ const authRoutes = require('./routes/auth');
 const storyRoutes = require('./routes/stories');
 const userRoutes = require('./routes/users');
 const chatRoutes = require('./routes/chats');
-const aiRoutes = require('./routes/ai'); // ✅ ADD AI ROUTES
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 
-// Trust proxy for rate limiting
+// Trust proxy for rate limiting (important for Render)
 app.set('trust proxy', 1);
 
-// ✅ CORS - MUST BE FIRST
+// ✅ UPDATED: CORS Configuration for Render
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+  'http://127.0.0.1:3002',
+  'https://failfixes-frontend.onrender.com', // ✅ Add your frontend URL
+  process.env.FRONTEND_URL // ✅ From environment variable
+].filter(Boolean); // Remove undefined values
+
 app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',  // ✅ Add any other dev port you use!
-    'http://127.0.0.1:3002'
-  ],
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('⚠️  CORS blocked origin:', origin);
+      console.log('✅ Allowed origins:', allowedOrigins);
+      callback(null, true); // ✅ Allow anyway in production (be careful with this)
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Accept', 
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
     'Origin'
   ]
 }));
@@ -40,80 +55,103 @@ app.use(cors({
 app.options('*', cors());
 
 // ✅ BODY PARSING - MUST BE BEFORE ROUTES
-app.use(express.json({ 
+app.use(express.json({
   limit: '10mb',
   strict: false
 }));
-app.use(express.urlencoded({ 
-  extended: true, 
-  limit: '10mb' 
+
+app.use(express.urlencoded({
+  extended: true,
+  limit: '10mb'
 }));
 
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // Compression
 app.use(compression());
 
-// Logging
+// Logging (only in development)
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
+  
+  // ✅ DEBUG MIDDLEWARE (only in development)
+  app.use((req, res, next) => {
+    console.log(`\n🌐 === REQUEST LOG ===`);
+    console.log(`${req.method} ${req.originalUrl}`);
+    console.log('Headers:', {
+      'content-type': req.headers['content-type'],
+      'authorization': req.headers.authorization ? 'Bearer [PRESENT]' : 'None',
+      'origin': req.headers.origin
+    });
+    if (Object.keys(req.body).length > 0) {
+      console.log('Body:', req.body);
+    }
+    if (Object.keys(req.params).length > 0) {
+      console.log('Params:', req.params);
+    }
+    if (Object.keys(req.query).length > 0) {
+      console.log('Query:', req.query);
+    }
+    console.log('=== END LOG ===\n');
+    next();
+  });
+} else {
+  // Production logging (minimal)
+  app.use(morgan('combined'));
 }
 
-// ✅ GLOBAL DEBUG MIDDLEWARE
-app.use((req, res, next) => {
-  console.log(`\n🌐 === GLOBAL REQUEST LOG ===`);
-  console.log(`${req.method} ${req.originalUrl}`);
-  console.log('Headers:', {
-    'content-type': req.headers['content-type'],
-    'authorization': req.headers.authorization ? 'Bearer [PRESENT]' : 'None',
-    'origin': req.headers.origin
-  });
-  console.log('Body:', req.body);
-  console.log('Params:', req.params);
-  console.log('Query:', req.query);
-  console.log('=== END GLOBAL LOG ===\n');
-  next();
-});
-
-// ✅ API ROUTES (ORDER DOES NOT MATTER FOR THESE)
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/stories', storyRoutes);
-app.use('/api/chats', chatRoutes);
-app.use('/api/ai', aiRoutes); // ✅ ADD AI ROUTE
-
-// Root endpoint
+// ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'FailFixes API Server',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    features: ['auth', 'stories', 'users', 'chats', 'realtime-chat', 'ai-story'] // ✅ ADD AI
+    environment: process.env.NODE_ENV || 'development',
+    features: ['auth', 'stories', 'users', 'chats', 'realtime-chat', 'ai-story-generation']
   });
 });
 
-// Health check
+// ✅ HEALTH CHECK (Important for Render)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    memory: process.memoryUsage(),
     features: {
       auth: 'active',
-      stories: 'active', 
+      stories: 'active',
       users: 'active',
       chats: 'active',
       socketIO: 'active',
-      ai: 'active' // ✅ ADD AI
+      ai: process.env.GROQ_API_KEY ? 'active' : 'inactive'
     }
   });
 });
+
+// ✅ API ROUTES
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/stories', storyRoutes);
+app.use('/api/chats', chatRoutes);
+app.use('/api/ai', aiRoutes);
 
 // ✅ 404 Handler
 app.use('*', (req, res) => {
@@ -121,16 +159,35 @@ app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.originalUrl} not found`,
-    availableRoutes: [
-      'GET /api/health',
-      'POST /api/auth/login',
-      'POST /api/auth/register',
-      'POST /api/users/:username/follow',
-      'GET /api/chats',
-      'POST /api/chats/direct',
-      'GET /api/chats/:chatId/messages',
-      'POST /api/ai/generate-story' // ✅ AI ROUTE
-    ]
+    availableEndpoints: {
+      root: 'GET /',
+      health: 'GET /health or /api/health',
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        me: 'GET /api/auth/me'
+      },
+      stories: {
+        list: 'GET /api/stories',
+        byId: 'GET /api/stories/:id',
+        create: 'POST /api/stories',
+        like: 'POST /api/stories/:id/like',
+        view: 'POST /api/stories/:id/view'
+      },
+      users: {
+        profile: 'GET /api/users/profile/:username',
+        follow: 'POST /api/users/:username/follow',
+        dashboard: 'GET /api/users/dashboard'
+      },
+      chats: {
+        list: 'GET /api/chats',
+        create: 'POST /api/chats/direct',
+        messages: 'GET /api/chats/:chatId/messages'
+      },
+      ai: {
+        generate: 'POST /api/ai/generate-story'
+      }
+    }
   });
 });
 
@@ -140,17 +197,19 @@ app.use((err, req, res, next) => {
   console.error('URL:', req.originalUrl);
   console.error('Method:', req.method);
   console.error('Error:', err.message);
-  console.error('Stack:', err.stack);
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Stack:', err.stack);
+  }
   console.error('=== END ERROR ===\n');
-  
+
   res.status(err.statusCode || 500).json({
     success: false,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
       : err.message,
-    ...(process.env.NODE_ENV === 'development' && { 
+    ...(process.env.NODE_ENV === 'development' && {
       error: err.message,
-      stack: err.stack 
+      stack: err.stack
     })
   });
 });

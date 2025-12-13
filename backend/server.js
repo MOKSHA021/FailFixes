@@ -28,17 +28,25 @@ const startServer = async () => {
     // Create HTTP server from Express app
     const server = http.createServer(app);
 
-    // ✅ SETUP SOCKET.IO SERVER
+    // ✅ UPDATED: CORS for Render deployment
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:3001',
+      'https://failfixes-frontend.onrender.com', // ✅ Add your frontend URL
+      process.env.FRONTEND_URL // ✅ From environment variable
+    ].filter(Boolean); // Remove undefined values
+
+    // ✅ SETUP SOCKET.IO SERVER with Render support
     const io = socketIo(server, {
       cors: {
-        origin: [
-          'http://localhost:3000',
-          'http://127.0.0.1:3000',
-          'http://localhost:3001'
-        ],
-        methods: ["GET", "POST"],
-        credentials: true
-      }
+        origin: allowedOrigins,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
+      },
+      transports: ['websocket', 'polling'], // ✅ Important for Render
+      allowEIO3: true
     });
 
     // ✅ SOCKET.IO AUTHENTICATION MIDDLEWARE
@@ -67,6 +75,7 @@ const startServer = async () => {
         
         next();
       } catch (err) {
+        console.error('Socket auth error:', err);
         next(new Error('Authentication error'));
       }
     });
@@ -182,20 +191,26 @@ const startServer = async () => {
       });
     });
 
+    // ✅ Make io accessible to routes
+    app.set('io', io);
+
+    // ✅ Use PORT from environment or default
+    const PORT = process.env.PORT || config.port || 5000;
+
     // Start HTTP server with Socket.IO
-    server.listen(config.port, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║                    🎉 FailFixes Server                      ║
 ║                   Started Successfully!                     ║
 ╠══════════════════════════════════════════════════════════════╣
-║ 🌐 Port: ${config.port.toString().padEnd(47)} ║
-║ 📱 Environment: ${config.nodeEnv.padEnd(36)} ║  
+║ 🌐 Port: ${PORT.toString().padEnd(47)} ║
+║ 📱 Environment: ${(process.env.NODE_ENV || 'development').padEnd(36)} ║  
 ║ 🕒 Started: ${new Date().toLocaleString().padEnd(38)} ║
-║ 🚀 API URL: http://localhost:${config.port}/api${' '.repeat(25)} ║
-║ 🏥 Health: http://localhost:${config.port}/api/health${' '.repeat(18)} ║
+║ 🚀 API URL: http://localhost:${PORT}/api${' '.repeat(25)} ║
+║ 🏥 Health: http://localhost:${PORT}/api/health${' '.repeat(18)} ║
 ║ 💬 Socket.IO: ENABLED${' '.repeat(33)} ║
-║ 📊 Database: ${config.database.uri.includes('mongodb.net') ? 'MongoDB Atlas' : 'Local MongoDB'.padEnd(33)} ║
+║ 📊 Database: ${config.database.uri.includes('mongodb.net') ? 'MongoDB Atlas'.padEnd(33) : 'Local MongoDB'.padEnd(33)} ║
 ╚══════════════════════════════════════════════════════════════╝
 
 🔧 Available Endpoints:
@@ -209,10 +224,9 @@ const startServer = async () => {
    • POST /api/chats/direct     - Create direct chat
 
 💡 Tips:
-   • Use Postman or curl to test API endpoints
-   • Check logs for detailed request information
-   • Frontend should connect to: http://localhost:${config.port}
-   • Socket.IO endpoint: http://localhost:${config.port}/socket.io/
+   • Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}
+   • Socket.IO endpoint: http://localhost:${PORT}/socket.io/
+   • Allowed origins: ${allowedOrigins.length} configured
       `);
     });
 
