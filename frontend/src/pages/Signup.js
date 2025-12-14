@@ -43,6 +43,7 @@ import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+
 // Gentle Animations
 const softPulse = keyframes`
   0%, 100% { 
@@ -52,6 +53,7 @@ const softPulse = keyframes`
     box-shadow: 0 0 20px rgba(174, 213, 129, 0.3), 0 0 40px rgba(174, 213, 129, 0.15); 
   }
 `;
+
 
 const gentleSlide = keyframes`
   from {
@@ -64,6 +66,7 @@ const gentleSlide = keyframes`
   }
 `;
 
+
 const softMorph = keyframes`
   0%, 100% { 
     border-radius: 50% 50% 50% 50%; 
@@ -75,11 +78,13 @@ const softMorph = keyframes`
   }
 `;
 
+
 const lightGradient = keyframes`
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 `;
+
 
 // Enhanced Styled Components with Larger Dimensions
 const BackgroundContainer = styled(Box)(({ theme }) => ({
@@ -102,6 +107,7 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
   overflow: 'hidden',
 }));
 
+
 const FloatingElement = styled(Box)(({ delay, size, left, top, duration }) => ({
   position: 'absolute',
   left: `${left}%`,
@@ -114,6 +120,7 @@ const FloatingElement = styled(Box)(({ delay, size, left, top, duration }) => ({
   backdropFilter: 'blur(2px)',
   border: '1px solid rgba(174, 213, 129, 0.1)'
 }));
+
 
 const EnhancedSignupCard = styled(Paper)(({ theme }) => ({
   background: `
@@ -152,10 +159,12 @@ const EnhancedSignupCard = styled(Paper)(({ theme }) => ({
   }
 }));
 
+
 const BrandHeader = styled(Box)(({ theme }) => ({
   textAlign: 'center',
   marginBottom: theme.spacing(4),
 }));
+
 
 const LogoIcon = styled(AutoFixHigh)(({ theme }) => ({
   fontSize: '4.2rem',
@@ -167,6 +176,7 @@ const LogoIcon = styled(AutoFixHigh)(({ theme }) => ({
   filter: 'drop-shadow(0 4px 8px rgba(129, 199, 132, 0.2))',
   marginBottom: theme.spacing(2)
 }));
+
 
 const BrandTitle = styled(Typography)(({ theme }) => ({
   fontSize: '3.5rem',
@@ -184,6 +194,7 @@ const BrandTitle = styled(Typography)(({ theme }) => ({
   }
 }));
 
+
 const WelcomeSection = styled(Box)(({ theme }) => ({
   background: 'linear-gradient(135deg, rgba(174, 213, 129, 0.08), rgba(179, 229, 252, 0.08))',
   borderRadius: '16px',
@@ -193,6 +204,7 @@ const WelcomeSection = styled(Box)(({ theme }) => ({
   backdropFilter: 'blur(10px)',
   position: 'relative',
 }));
+
 
 const FeatureGrid = styled(Box)(({ theme }) => ({
   display: 'grid',
@@ -204,7 +216,6 @@ const FeatureGrid = styled(Box)(({ theme }) => ({
   }
 }));
 
-// ✅ FIXED: Use sx prop instead of accessing undefined theme colors
 const FeatureItem = ({ icon, text, color, ...props }) => (
   <Box
     sx={{
@@ -240,6 +251,7 @@ const FeatureItem = ({ icon, text, color, ...props }) => (
     <Typography>{text}</Typography>
   </Box>
 );
+
 
 const EnhancedTextField = styled(TextField)(({ theme, strength }) => ({
   marginBottom: theme.spacing(3),
@@ -289,6 +301,7 @@ const EnhancedTextField = styled(TextField)(({ theme, strength }) => ({
   }
 }));
 
+
 const EnhancedButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
   borderRadius: '14px',
   padding: '18px 44px',
@@ -319,6 +332,7 @@ const EnhancedButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
   }
 }));
 
+
 const ProgressIndicator = styled(LinearProgress)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   height: '8px',
@@ -329,6 +343,7 @@ const ProgressIndicator = styled(LinearProgress)(({ theme }) => ({
     borderRadius: '4px'
   }
 }));
+
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -351,9 +366,11 @@ const Signup = () => {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [formProgress, setFormProgress] = useState(0);
 
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
 
   useEffect(() => {
     const calculateProgress = () => {
@@ -363,6 +380,7 @@ const Signup = () => {
     };
     calculateProgress();
   }, [formData]);
+
 
   useEffect(() => {
     const calculatePasswordStrength = (password) => {
@@ -376,6 +394,7 @@ const Signup = () => {
     calculatePasswordStrength(formData.password);
   }, [formData.password]);
 
+
   const handleChange = (e) => {
     const { name, value, checked, type } = e.target;
     setFormData({
@@ -388,14 +407,17 @@ const Signup = () => {
     }
   };
 
+
   const validateForm = () => {
     const newErrors = {};
+
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email';
     }
+
 
     if (!formData.username) {
       newErrors.username = 'Username is required';
@@ -405,19 +427,23 @@ const Signup = () => {
       newErrors.username = 'Username can only contain letters, numbers, and underscores';
     }
 
+
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -427,7 +453,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/auth/register`, {
         email: formData.email,
         username: formData.username,
         password: formData.password,
@@ -455,12 +481,14 @@ const Signup = () => {
     }
   };
 
+
   const features = [
     { icon: <CheckCircle />, text: 'Share & Learn', color: '#81c784' },
     { icon: <Groups />, text: 'Join Community', color: '#90caf9' },
     { icon: <Security />, text: 'Privacy First', color: '#ffb74d' },
     { icon: <Psychology />, text: 'Growth Tools', color: '#f8bbd9' }
   ];
+
 
   return (
     <BackgroundContainer>
@@ -754,5 +782,6 @@ const Signup = () => {
     </BackgroundContainer>
   );
 };
+
 
 export default Signup;

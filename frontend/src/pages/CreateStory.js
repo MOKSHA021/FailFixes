@@ -401,7 +401,7 @@ function CreateStory() {
         status  : asDraft ? 'draft' : 'published'
       };
 
-      const res = await fetch('http://localhost:5000/api/stories', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/stories`, {
         method : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body   : JSON.stringify(payload)
@@ -461,7 +461,7 @@ function CreateStory() {
     }
     setAILoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/ai/generate-story", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/ai/generate-story`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: aiInput })
@@ -558,7 +558,7 @@ function CreateStory() {
             </Stack>
           </Box>
         </Fade>
-        {/* ================ GRID/FORM/SIDEBAR (original, everything retained) ================ */}
+
         <Grid container spacing={6}>
           {/* form column */}
           <Grid item xs={12} lg={8}>

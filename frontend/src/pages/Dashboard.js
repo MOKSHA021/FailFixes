@@ -50,11 +50,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { dashboardAPI } from '../services/api';
 
+
 // Animations
 const float = keyframes`
   0%, 100% { transform: translateY(0px) rotate(0deg); }
   50% { transform: translateY(-12px) rotate(2deg); }
 `;
+
 
 const pulse = keyframes`
   0%, 100% { 
@@ -66,6 +68,7 @@ const pulse = keyframes`
     transform: scale(1.05);
   }
 `;
+
 
 // Styled Components
 const BackgroundContainer = styled(Box)(({ theme }) => ({
@@ -79,6 +82,7 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
   paddingBottom: theme.spacing(8),
 }));
 
+
 const WelcomeSection = styled(Paper)(({ theme }) => ({
   background: `linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)`,
   backdropFilter: 'blur(20px)',
@@ -88,6 +92,7 @@ const WelcomeSection = styled(Paper)(({ theme }) => ({
   border: '1px solid rgba(255, 255, 255, 0.3)',
   boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1)'
 }));
+
 
 const StatsCard = styled(Card)(({ color }) => ({
   borderRadius: '24px',
@@ -120,6 +125,7 @@ const StatsCard = styled(Card)(({ color }) => ({
   }
 }));
 
+
 const IconContainer = styled(Box)(({ color }) => ({
   width: 70,
   height: 70,
@@ -134,6 +140,7 @@ const IconContainer = styled(Box)(({ color }) => ({
   transition: 'all 0.4s ease',
   border: `2px solid ${color}30`,
 }));
+
 
 const ActionButton = styled(Button)(({ variant: buttonVariant }) => ({
   borderRadius: '18px',
@@ -162,6 +169,7 @@ const ActionButton = styled(Button)(({ variant: buttonVariant }) => ({
   })
 }));
 
+
 function Dashboard() {
   const { user, isAuthenticated } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
@@ -170,19 +178,21 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
 
-  // ✅ NEW: State for expanding followers/following sections
+
   const [showAllFollowers, setShowAllFollowers] = useState(false);
   const [showAllFollowing, setShowAllFollowing] = useState(false);
   const [followersDisplayCount, setFollowersDisplayCount] = useState(3);
   const [followingDisplayCount, setFollowingDisplayCount] = useState(3);
 
+
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
 
-  // 🎯 FIXED: Memoized fetch function to prevent infinite loops
+
   const fetchDashboardData = useCallback(async (isManualRefresh = false) => {
     if (!isAuthenticated || !user) return;
+
 
     try {
       if (isManualRefresh) {
@@ -191,6 +201,7 @@ function Dashboard() {
         setLoading(true);
       }
       setError('');
+
 
       console.log('📊 Fetching dashboard data...');
       const response = await dashboardAPI.getDashboard();
@@ -201,7 +212,6 @@ function Dashboard() {
       console.error('❌ Dashboard error:', err);
       setError('Failed to load dashboard data');
       
-      // Fallback data
       if (!dashboardData) {
         setDashboardData({
           user: { name: user?.name || 'User', username: user?.username || 'user' },
@@ -225,17 +235,16 @@ function Dashboard() {
     }
   }, [isAuthenticated, user, dashboardData]);
 
-  // 🎯 FIXED: Controlled useEffect with proper dependencies
+
   useEffect(() => {
     let isMounted = true;
 
+
     const loadDashboard = async () => {
       if (isMounted) {
-        // Check for refresh from story creation
         if (location.state?.refresh) {
           console.log('🔄 Refreshing from story creation');
           await fetchDashboardData(true);
-          // Clear the refresh state
           navigate(location.pathname, { replace: true, state: {} });
         } else {
           await fetchDashboardData();
@@ -243,29 +252,33 @@ function Dashboard() {
       }
     };
 
+
     loadDashboard();
+
 
     return () => {
       isMounted = false;
     };
   }, [location.state?.refresh]);
 
-  // Manual refresh handler
+
   const handleManualRefresh = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
     fetchDashboardData(true);
   }, [fetchDashboardData]);
 
-  // ✅ NEW: Handlers for expanding followers/following sections
+
   const handleShowMoreFollowers = () => {
     setShowAllFollowers(!showAllFollowers);
     setFollowersDisplayCount(showAllFollowers ? 3 : (dashboardData?.recentFollowers?.length || 3));
   };
 
+
   const handleShowMoreFollowing = () => {
     setShowAllFollowing(!showAllFollowing);
     setFollowingDisplayCount(showAllFollowing ? 3 : (dashboardData?.recentFollowing?.length || 3));
   };
+
 
   if (!isAuthenticated || !user) {
     return (
@@ -285,6 +298,7 @@ function Dashboard() {
     );
   }
 
+
   if (loading && !dashboardData) {
     return (
       <BackgroundContainer>
@@ -302,7 +316,7 @@ function Dashboard() {
     );
   }
 
-  // 🎯 UPDATED: Enhanced stats data with followers
+
   const statsData = [
     {
       title: 'Stories Shared',
@@ -334,6 +348,7 @@ function Dashboard() {
     }
   ];
 
+
   return (
     <BackgroundContainer>
       <Container maxWidth="lg">
@@ -342,6 +357,7 @@ function Dashboard() {
             {error}
           </Alert>
         )}
+
 
         {/* Welcome Section */}
         <Fade in={mounted} timeout={1000}>
@@ -418,6 +434,7 @@ function Dashboard() {
           </WelcomeSection>
         </Fade>
 
+
         {/* Stats Cards */}
         <Grid container spacing={4} sx={{ mb: 6 }}>
           {statsData.map((stat, index) => (
@@ -473,7 +490,8 @@ function Dashboard() {
           ))}
         </Grid>
 
-        {/* ✅ UPDATED: Social Section with In-Place Expansion */}
+
+        {/* Social Section with In-Place Expansion */}
         <Grid container spacing={4} sx={{ mb: 6 }}>
           {/* Recent Followers */}
           <Grid item xs={12} md={6}>
@@ -501,6 +519,7 @@ function Dashboard() {
                     {dashboardData?.stats?.followersCount || 0}
                   </Typography>
                 </Box>
+
 
                 {dashboardData?.recentFollowers?.length > 0 ? (
                   <>
@@ -555,7 +574,7 @@ function Dashboard() {
                       ))}
                     </List>
 
-                    {/* ✅ NEW: View More/Less Button */}
+
                     {dashboardData.recentFollowers.length > 3 && (
                       <Button
                         variant="outlined"
@@ -585,6 +604,7 @@ function Dashboard() {
             </Grow>
           </Grid>
 
+
           {/* Recent Following */}
           <Grid item xs={12} md={6}>
             <Grow in={mounted} timeout={1500}>
@@ -611,6 +631,7 @@ function Dashboard() {
                     {dashboardData?.stats?.followingCount || 0}
                   </Typography>
                 </Box>
+
 
                 {dashboardData?.recentFollowing?.length > 0 ? (
                   <>
@@ -665,7 +686,7 @@ function Dashboard() {
                       ))}
                     </List>
 
-                    {/* ✅ NEW: View More/Less Button */}
+
                     {dashboardData.recentFollowing.length > 3 && (
                       <Button
                         variant="outlined"
@@ -696,6 +717,7 @@ function Dashboard() {
           </Grid>
         </Grid>
 
+
         {/* Recent Stories */}
         <Grow in={mounted} timeout={1600}>
           <Paper 
@@ -715,6 +737,7 @@ function Dashboard() {
                 Recent Stories
               </Typography>
             </Box>
+
 
             {dashboardData?.recentStories?.length > 0 ? (
               <List sx={{ p: 0 }}>
@@ -781,6 +804,7 @@ function Dashboard() {
               </Box>
             )}
 
+
             <ActionButton
               variant="outlined"
               onClick={() => navigate('/browse')}
@@ -795,5 +819,6 @@ function Dashboard() {
     </BackgroundContainer>
   );
 }
+
 
 export default Dashboard;

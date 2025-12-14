@@ -50,6 +50,7 @@ import { storiesAPI, usersAPI } from '../services/api';
 import FollowButton from '../components/FollowButton';
 import UserSuggestions from '../components/UserSuggestions';
 
+
 const gentleFloat = keyframes`
   0%, 100% { 
     transform: translateY(0px) rotate(0deg); 
@@ -58,6 +59,7 @@ const gentleFloat = keyframes`
     transform: translateY(-8px) rotate(1deg); 
   }
 `;
+
 
 const softGlow = keyframes`
   0%, 100% { 
@@ -68,6 +70,7 @@ const softGlow = keyframes`
   }
 `;
 
+
 const subtleShimmer = keyframes`
   0% {
     background-position: -200px 0;
@@ -76,6 +79,7 @@ const subtleShimmer = keyframes`
     background-position: 200px 0;
   }
 `;
+
 
 const softParticle = keyframes`
   0%, 100% { 
@@ -87,6 +91,7 @@ const softParticle = keyframes`
     opacity: 0.4; 
   }
 `;
+
 
 const BackgroundContainer = styled(Box)(({ theme }) => ({
   minHeight: '100vh',
@@ -120,6 +125,7 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
+
 const FloatingParticle = styled(Box)(({ delay, size, left, top }) => ({
   position: 'absolute',
   left: `${left}%`,
@@ -133,6 +139,7 @@ const FloatingParticle = styled(Box)(({ delay, size, left, top }) => ({
   backdropFilter: 'blur(1px)',
   border: '1px solid rgba(174, 213, 129, 0.1)'
 }));
+
 
 const HeroCard = styled(Paper)(({ theme }) => ({
   background: `
@@ -184,6 +191,7 @@ const HeroCard = styled(Paper)(({ theme }) => ({
   }
 }));
 
+
 const StatCard = styled(Card)(({ theme }) => ({
   textAlign: 'center',
   padding: theme.spacing(4),
@@ -212,6 +220,7 @@ const StatCard = styled(Card)(({ theme }) => ({
   }
 }));
 
+
 const FeatureCard = styled(Paper)(({ theme }) => ({
   background: `
     linear-gradient(135deg, 
@@ -230,6 +239,7 @@ const FeatureCard = styled(Paper)(({ theme }) => ({
     0 4px 16px rgba(0, 0, 0, 0.04)
   `,
 }));
+
 
 const ElegantButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
   borderRadius: '16px',
@@ -266,6 +276,7 @@ const ElegantButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
   }),
 }));
 
+
 const FeatureChip = ({ icon, text, color, ...props }) => (
   <Chip
     icon={icon}
@@ -290,6 +301,7 @@ const FeatureChip = ({ icon, text, color, ...props }) => (
   />
 );
 
+
 function Home() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -301,15 +313,18 @@ function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [feedType, setFeedType] = useState('all');
 
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
 
   useEffect(() => {
     if (isAuthenticated) {
       loadStories();
     }
   }, [isAuthenticated, activeTab, searchTerm, feedType]);
+
 
   const loadStories = async () => {
     setLoading(true);
@@ -355,11 +370,13 @@ function Home() {
     }
   };
 
+
   const handleFollow = async (username) => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
+
 
     try {
       console.log('👥 Following user:', username);
@@ -390,11 +407,13 @@ function Home() {
     }
   };
 
+
   const handleLike = async (storyId) => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
+
 
     try {
       console.log('👍 Liking story:', storyId);
@@ -416,9 +435,11 @@ function Home() {
     }
   };
 
+
   const handleSearch = (e) => {
     e.preventDefault();
   };
+
 
   const stats = [
     {
@@ -443,6 +464,7 @@ function Home() {
       description: 'Stories that inspire'
     },
   ];
+
 
   const features = [
     {
@@ -475,6 +497,7 @@ function Home() {
     }
   ];
 
+
   const communityFeatures = [
     { icon: <TrendingUp />, text: 'Growth Stories', color: '#81c784' },
     { icon: <Psychology />, text: 'Mental Wellness', color: '#90caf9' },
@@ -482,7 +505,7 @@ function Home() {
     { icon: <GroupWork />, text: 'Supportive Community', color: '#f8bbd9' }
   ];
 
-  // 🎯 FIXED: Story Card with no follow buttons in Following Feed
+
   const StoryCard = ({ story }) => {
     const authorUsername = story.displayAuthor || story.authorUsername;
     const isOwnStory = user && (
@@ -493,10 +516,10 @@ function Home() {
     
     const isFollowingAuthor = story.isFollowing || false;
     
-    // 🎯 KEY CHANGE: Hide follow buttons in Following Feed completely
     const isFollowingFeed = feedType === 'following';
     const shouldShowFollowButton = isAuthenticated && !isOwnStory && !isFollowingAuthor && !isFollowingFeed;
     const shouldShowFollowingChip = isAuthenticated && !isOwnStory && isFollowingAuthor && !isFollowingFeed;
+
 
     return (
       <Card 
@@ -550,7 +573,6 @@ function Home() {
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {new Date(story.createdAt).toLocaleDateString()}
-                {/* 🎯 Show "Following" indicator in Following Feed */}
                 {isFollowingFeed && (
                   <Chip
                     label="Following"
@@ -563,7 +585,6 @@ function Home() {
               </Typography>
             </Box>
             
-            {/* 🎯 FIXED: Only show follow button in Discover mode, not in Following Feed */}
             {shouldShowFollowButton && (
               <Button
                 size="small"
@@ -584,7 +605,6 @@ function Home() {
               </Button>
             )}
             
-            {/* 🎯 FIXED: Only show Following chip in Discover mode, not in Following Feed */}
             {shouldShowFollowingChip && (
               <Chip
                 label="Following"
@@ -672,6 +692,7 @@ function Home() {
     );
   };
 
+
   // Show landing page for non-authenticated users
   if (!isAuthenticated) {
     return (
@@ -686,6 +707,7 @@ function Home() {
             top={Math.random() * 100}
           />
         ))}
+
 
         <Container maxWidth="lg">
           {/* Hero Section */}
@@ -729,6 +751,7 @@ function Home() {
                 from challenges to extraordinary success
               </Typography>
 
+
               <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1.5 }}>
                 {communityFeatures.map((feature, index) => (
                   <FeatureChip
@@ -739,6 +762,7 @@ function Home() {
                   />
                 ))}
               </Box>
+
 
               <Stack 
                 direction={{ xs: 'column', sm: 'row' }} 
@@ -765,6 +789,7 @@ function Home() {
               </Stack>
             </HeroCard>
           </Fade>
+
 
           {/* Stats Section */}
           <Grid container spacing={4} sx={{ mb: 8 }}>
@@ -814,6 +839,7 @@ function Home() {
               </Grid>
             ))}
           </Grid>
+
 
           {/* How It Works */}
           <Grow in={mounted} timeout={1600}>
@@ -870,6 +896,7 @@ function Home() {
                 ))}
               </Grid>
 
+
               <Box textAlign="center" sx={{ mt: 6 }}>
                 <ElegantButton
                   variant="primary"
@@ -886,6 +913,7 @@ function Home() {
       </BackgroundContainer>
     );
   }
+
 
   // Show feed for authenticated users
   return (
@@ -910,6 +938,7 @@ function Home() {
               </Typography>
             </Paper>
 
+
             {/* Feed Type Toggle */}
             <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
               <Tabs 
@@ -927,6 +956,7 @@ function Home() {
                 <Tab icon={<Timeline />} label="Following Feed" />
               </Tabs>
             </Paper>
+
 
             {feedType === 'all' && (
               <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
@@ -947,6 +977,7 @@ function Home() {
                 </Tabs>
               </Paper>
             )}
+
 
             {/* Search Bar */}
             <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
@@ -971,6 +1002,7 @@ function Home() {
                 />
               </form>
             </Paper>
+
 
             {/* Stories */}
             {loading ? (
@@ -1024,6 +1056,7 @@ function Home() {
             )}
           </Grid>
 
+
           {/* Sidebar */}
           <Grid item xs={12} md={4}>
             <UserSuggestions />
@@ -1057,5 +1090,6 @@ function Home() {
     </BackgroundContainer>
   );
 }
+
 
 export default Home;

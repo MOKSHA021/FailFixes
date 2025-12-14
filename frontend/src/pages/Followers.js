@@ -19,6 +19,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { userAPI } from '../services/api';
 import FollowButton from '../components/FollowButton';
 
+
 function FollowersPage() {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ function FollowersPage() {
     hasPrev: false
   });
 
-  // ✅ FIXED: Memoized fetch function to prevent infinite loops
+
   const fetchFollowers = useCallback(async (page = 1) => {
     if (!username) {
       setError('Username is required');
@@ -42,21 +43,22 @@ function FollowersPage() {
       return;
     }
 
+
     try {
       setLoading(true);
       setError('');
       
       console.log('🔄 Fetching followers for:', username, 'page:', page);
       
-      // ✅ Make API call to backend
       const response = await userAPI.getUserFollowers(username, { 
         page, 
         limit: 20 
       });
 
+
       console.log('📊 Followers API response:', response);
 
-      // ✅ FIXED: Handle different response structures
+
       const responseData = response.data || response;
       const followersData = responseData.followers || [];
       const paginationData = responseData.pagination || {
@@ -67,15 +69,16 @@ function FollowersPage() {
         hasPrev: false
       };
 
+
       setFollowers(followersData);
       setPagination(paginationData);
       
       console.log('✅ Followers loaded:', followersData.length);
 
+
     } catch (err) {
       console.error('❌ Followers error:', err);
       
-      // ✅ FIXED: Better error handling
       if (err.response?.status === 404) {
         setError(`User "${username}" not found`);
       } else if (err.response?.status === 500) {
@@ -93,20 +96,19 @@ function FollowersPage() {
     }
   }, [username]);
 
-  // ✅ FIXED: Re-fetch when username changes
+
   useEffect(() => {
     if (username) {
       fetchFollowers(1);
     }
   }, [username, fetchFollowers]);
 
-  // ✅ FIXED: Optimistic update for follow/unfollow
+
   const handleFollowChange = useCallback((followedUsername, isFollowing) => {
     console.log('🔄 Updating follow status:', followedUsername, isFollowing);
     
     setFollowers(prevFollowers => 
       prevFollowers.map(follower => {
-        // ✅ Check multiple possible username fields
         const followerUsername = follower.displayUsername || follower.username || follower.name;
         
         if (followerUsername && followerUsername.toLowerCase() === followedUsername.toLowerCase()) {
@@ -117,19 +119,19 @@ function FollowersPage() {
     );
   }, []);
 
-  // ✅ Retry function
+
   const handleRetry = useCallback(() => {
     fetchFollowers(pagination.currentPage);
   }, [fetchFollowers, pagination.currentPage]);
 
-  // ✅ Load more followers (pagination)
+
   const handleLoadMore = useCallback(() => {
     if (pagination.hasNext && !loading) {
       fetchFollowers(pagination.currentPage + 1);
     }
   }, [fetchFollowers, pagination.hasNext, pagination.currentPage, loading]);
 
-  // ✅ FIXED: Better loading state
+
   if (loading && followers.length === 0) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
@@ -171,6 +173,7 @@ function FollowersPage() {
     );
   }
 
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       {/* Header */}
@@ -188,6 +191,7 @@ function FollowersPage() {
         </Typography>
       </Box>
 
+
       {/* Error Alert */}
       {error && (
         <Alert 
@@ -202,6 +206,7 @@ function FollowersPage() {
           {error}
         </Alert>
       )}
+
 
       {/* Empty State */}
       {followers.length === 0 && !loading && !error ? (
@@ -226,7 +231,6 @@ function FollowersPage() {
         <Paper elevation={2}>
           <List disablePadding>
             {followers.map((follower, index) => {
-              // ✅ FIXED: Handle different username formats
               const followerUsername = follower.displayUsername || follower.username || follower.name;
               const followerId = follower._id || follower.id || `${followerUsername}-${index}`;
               
@@ -287,7 +291,6 @@ function FollowersPage() {
                     }
                   />
                   
-                  {/* ✅ FIXED: Better follow button integration */}
                   <FollowButton
                     username={followerUsername}
                     initialFollowStatus={follower.isFollowing}
@@ -299,7 +302,8 @@ function FollowersPage() {
             })}
           </List>
 
-          {/* ✅ Pagination / Load More */}
+
+          {/* Pagination / Load More */}
           {pagination.hasNext && (
             <Box sx={{ p: 2, textAlign: 'center' }}>
               <Button
@@ -320,7 +324,8 @@ function FollowersPage() {
             </Box>
           )}
 
-          {/* ✅ Show pagination info */}
+
+          {/* Show pagination info */}
           {followers.length > 0 && (
             <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50' }}>
               <Typography variant="caption" color="text.secondary">
@@ -336,5 +341,6 @@ function FollowersPage() {
     </Container>
   );
 }
+
 
 export default FollowersPage;

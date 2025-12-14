@@ -18,6 +18,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { userAPI } from '../services/api';
 import FollowButton from '../components/FollowButton';
 
+
 function FollowingPage() {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -27,9 +28,11 @@ function FollowingPage() {
   const [error, setError] = useState('');
   const [pagination, setPagination] = useState({ currentPage: 1, totalFollowing: 0 });
 
+
   useEffect(() => {
     fetchFollowing();
   }, [username]);
+
 
   const fetchFollowing = async (page = 1) => {
     setLoading(true);
@@ -45,6 +48,7 @@ function FollowingPage() {
     }
   };
 
+
   const handleFollowChange = (followedUsername, isFollowing) => {
     setFollowing(prev => prev.map(user => 
       (user.username === followedUsername || user.name === followedUsername)
@@ -53,6 +57,7 @@ function FollowingPage() {
     ));
   };
 
+
   if (loading) {
     return (
       <Container maxWidth="md" sx={{ py: 4, textAlign: 'center' }}>
@@ -60,6 +65,7 @@ function FollowingPage() {
       </Container>
     );
   }
+
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -77,9 +83,11 @@ function FollowingPage() {
         </Typography>
       </Box>
 
+
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
       )}
+
 
       {following.length === 0 && !loading ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -157,5 +165,6 @@ function FollowingPage() {
     </Container>
   );
 }
+
 
 export default FollowingPage;

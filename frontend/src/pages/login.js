@@ -34,7 +34,8 @@ import {
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { useAuth } from '../context/AuthContext';
+
 
 // Soft Animations
 const gentleFloat = keyframes`
@@ -46,6 +47,7 @@ const gentleFloat = keyframes`
   }
 `;
 
+
 const softGlow = keyframes`
   0%, 100% { 
     box-shadow: 0 0 15px rgba(139, 195, 74, 0.2), 0 0 30px rgba(139, 195, 74, 0.1); 
@@ -55,6 +57,7 @@ const softGlow = keyframes`
   }
 `;
 
+
 const subtleShimmer = keyframes`
   0% {
     background-position: -200px 0;
@@ -63,6 +66,7 @@ const subtleShimmer = keyframes`
     background-position: 200px 0;
   }
 `;
+
 
 const softParticle = keyframes`
   0%, 100% { 
@@ -74,6 +78,7 @@ const softParticle = keyframes`
     opacity: 0.4; 
   }
 `;
+
 
 // Enhanced Styled Components with Larger Sizes
 const BackgroundContainer = styled(Box)(({ theme }) => ({
@@ -106,6 +111,7 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
+
 const FloatingParticle = styled(Box)(({ delay, size, left, top }) => ({
   position: 'absolute',
   left: `${left}%`,
@@ -119,6 +125,7 @@ const FloatingParticle = styled(Box)(({ delay, size, left, top }) => ({
   backdropFilter: 'blur(1px)',
   border: '1px solid rgba(174, 213, 129, 0.1)'
 }));
+
 
 const EnhancedGlassCard = styled(Paper)(({ theme }) => ({
   background: `
@@ -170,11 +177,13 @@ const EnhancedGlassCard = styled(Paper)(({ theme }) => ({
   }
 }));
 
+
 const BrandLogo = styled(Box)(({ theme }) => ({
   textAlign: 'center',
   marginBottom: theme.spacing(4),
   position: 'relative'
 }));
+
 
 const LogoIcon = styled(AutoFixHigh)(({ theme }) => ({
   fontSize: '4rem',
@@ -186,6 +195,7 @@ const LogoIcon = styled(AutoFixHigh)(({ theme }) => ({
   filter: 'drop-shadow(0 4px 8px rgba(129, 199, 132, 0.2))',
   marginBottom: theme.spacing(2)
 }));
+
 
 const BrandTitle = styled(Typography)(({ theme }) => ({
   fontSize: '3.2rem',
@@ -202,6 +212,7 @@ const BrandTitle = styled(Typography)(({ theme }) => ({
   }
 }));
 
+
 const FeatureShowcase = styled(Box)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'center',
@@ -209,6 +220,7 @@ const FeatureShowcase = styled(Box)(({ theme }) => ({
   gap: theme.spacing(1.5),
   marginBottom: theme.spacing(4)
 }));
+
 
 const FeatureChip = ({ icon, text, color, ...props }) => (
   <Chip
@@ -233,6 +245,7 @@ const FeatureChip = ({ icon, text, color, ...props }) => (
     {...props}
   />
 );
+
 
 const EnhancedTextField = styled(TextField)(({ theme }) => ({
   marginBottom: theme.spacing(3),
@@ -278,6 +291,7 @@ const EnhancedTextField = styled(TextField)(({ theme }) => ({
   }
 }));
 
+
 const EnhancedButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
   borderRadius: '16px',
   padding: '16px 40px',
@@ -320,6 +334,7 @@ const EnhancedButton = styled(Button)(({ theme, variant: buttonVariant }) => ({
   }
 }));
 
+
 const StatsDisplay = styled(Box)(({ theme }) => ({
   display: 'grid',
   gridTemplateColumns: 'repeat(3, 1fr)',
@@ -329,6 +344,7 @@ const StatsDisplay = styled(Box)(({ theme }) => ({
     gridTemplateColumns: '1fr'
   }
 }));
+
 
 const StatCard = styled(Box)(({ theme }) => ({
   textAlign: 'center',
@@ -346,11 +362,12 @@ const StatCard = styled(Box)(({ theme }) => ({
   }
 }));
 
+
 const Login = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { login } = useAuth(); // Use AuthContext login method
+  const { login } = useAuth();
   
   const [formData, setFormData] = useState({
     identifier: '',
@@ -364,9 +381,11 @@ const Login = () => {
   const [identifierHasValue, setIdentifierHasValue] = useState(false);
   const [passwordHasValue, setPasswordHasValue] = useState(false);
 
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
 
   useLayoutEffect(() => {
     const checkAutofill = () => {
@@ -389,6 +408,7 @@ const Login = () => {
     setTimeout(checkAutofill, 1000);
   }, []);
 
+
   const makeAnimationStartHandler = (stateSetter) => (e) => {
     const autofilled = !!e.target?.matches("*:-webkit-autofill");
     if (e.animationName === "mui-auto-fill") {
@@ -398,6 +418,7 @@ const Login = () => {
       stateSetter(autofilled);
     }
   };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -416,13 +437,13 @@ const Login = () => {
     if (error) setError('');
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // Use AuthContext login method instead of direct API call
       const result = await login(formData);
       
       if (result.success) {
@@ -437,10 +458,10 @@ const Login = () => {
     }
   };
 
+
   const handleGuestAccess = async () => {
     setLoading(true);
     try {
-      // You can implement guest session logic here
       navigate('/browse');
     } catch (error) {
       setError('Failed to create guest session');
@@ -449,12 +470,14 @@ const Login = () => {
     }
   };
 
+
   const features = [
     { icon: <TrendingUp />, text: 'Learn & Grow', color: '#81c784' },
     { icon: <Psychology />, text: 'Share Wisdom', color: '#90caf9' },
     { icon: <EmojiObjects />, text: 'Get Insights', color: '#ffb74d' },
     { icon: <GroupWork />, text: 'Community', color: '#f8bbd9' }
   ];
+
 
   return (
     <BackgroundContainer>
@@ -593,7 +616,7 @@ const Login = () => {
                         edge="end"
                         sx={{
                           color: 'rgba(0, 0, 0, 0.5)',
-                          '&:hover': {
+                          '&:hover': { 
                             color: '#81c784',
                             backgroundColor: 'rgba(129, 199, 132, 0.1)'
                           }
@@ -606,45 +629,63 @@ const Login = () => {
                 }}
               />
 
+              <Stack direction="row" justifyContent="flex-end" sx={{ mb: 3 }}>
+                <Link
+                  onClick={() => navigate('/forgot-password')}
+                  sx={{
+                    fontSize: '0.95rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    color: '#81c784',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      color: '#66bb6a',
+                      transform: 'scale(1.02)'
+                    }
+                  }}
+                >
+                  Forgot Password?
+                </Link>
+              </Stack>
+
               <EnhancedButton
                 type="submit"
                 fullWidth
                 variant="primary"
                 disabled={loading}
-                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <LoginIcon />}
+                startIcon={loading ? <CircularProgress size={22} color="inherit" /> : <LoginIcon />}
                 endIcon={!loading && <ArrowForward />}
                 sx={{ mb: 3 }}
               >
-                {loading ? 'Signing In...' : 'Sign In to FailFixes'}
+                {loading ? 'Signing In...' : 'Sign In'}
+              </EnhancedButton>
+
+              <Divider sx={{ 
+                my: 3,
+                '&::before, &::after': {
+                  borderColor: 'rgba(0, 0, 0, 0.08)'
+                }
+              }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', px: 2 }}>
+                  OR
+                </Typography>
+              </Divider>
+
+              <EnhancedButton
+                fullWidth
+                variant="outlined"
+                onClick={handleGuestAccess}
+                disabled={loading}
+                sx={{ mb: 4 }}
+              >
+                Continue as Guest
               </EnhancedButton>
             </Box>
 
-            <Divider sx={{ my: 3 }}>
-              <Chip 
-                label="or" 
-                sx={{ 
-                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                  backdropFilter: 'blur(5px)',
-                  fontWeight: 500,
-                  fontSize: '0.9rem'
-                }}
-              />
-            </Divider>
-
-            <EnhancedButton
-              fullWidth
-              variant="outlined"
-              onClick={handleGuestAccess}
-              disabled={loading}
-              startIcon={<Star />}
-              sx={{ mb: 4 }}
-            >
-              Browse as Guest Explorer
-            </EnhancedButton>
-
             <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
               <Typography variant="body1" color="text.secondary">
-                New to FailFixes?
+                Don't have an account?
               </Typography>
               <Link 
                 onClick={() => navigate('/signup')}
@@ -663,7 +704,7 @@ const Login = () => {
                   }
                 }}
               >
-                Join Community →
+                Sign Up →
               </Link>
             </Stack>
           </EnhancedGlassCard>
@@ -672,5 +713,6 @@ const Login = () => {
     </BackgroundContainer>
   );
 };
+
 
 export default Login;

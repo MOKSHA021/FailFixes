@@ -44,12 +44,15 @@ import {
   Computer,
   Palette,
   FamilyRestroom,
-  Chat // ✅ ADD CHAT ICON
+  Chat
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { chatAPI } from '../services/api'; // ✅ ADD CHAT API
+import { chatAPI } from '../services/api';
+
+// ✅ ADD API BASE URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Animation keyframes
 const gentleFloat = keyframes`
@@ -141,7 +144,6 @@ const ActionButton = styled(Button)(({ variant: buttonVariant, selected }) => ({
       transform: 'translateY(-2px) scale(1.05)',
     }
   }),
-  // ✅ ADD MESSAGE BUTTON VARIANT
   ...(buttonVariant === 'message' && {
     background: 'linear-gradient(135deg, #81c784, #aed581)',
     color: '#fff',
@@ -188,7 +190,7 @@ function ViewStory() {
   const [commentText, setCommentText] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
-  const [messageLoading, setMessageLoading] = useState(false); // ✅ ADD MESSAGE LOADING STATE
+  const [messageLoading, setMessageLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const { id } = useParams();
@@ -213,15 +215,12 @@ function ViewStory() {
            { label: categoryValue, icon: CategoryIcon, color: '#81c784' };
   };
 
-  // ✅ ADD MESSAGE HANDLER FUNCTION
   const handleMessage = async () => {
-    // Check authentication
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
-    // Check if trying to message themselves
     if (user._id === story.author?._id) {
       alert('You cannot send a message to yourself!');
       return;
@@ -230,11 +229,9 @@ function ViewStory() {
     try {
       setMessageLoading(true);
 
-      // Create or get existing direct chat with story author
       const response = await chatAPI.createDirectChat(story.author._id);
 
       if (response.data.success) {
-        // Navigate to chat page with the created/existing chat
         navigate('/chat', { 
           state: { 
             selectedChatId: response.data.chat._id,
@@ -252,7 +249,7 @@ function ViewStory() {
     }
   };
 
-  // Fetch story data
+  // ✅ UPDATED: Fetch story data with environment variable
   useEffect(() => {
     const fetchStory = async () => {
       try {
@@ -263,7 +260,7 @@ function ViewStory() {
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers.Authorization = `Bearer ${token}`;
 
-        const response = await fetch(`http://localhost:5000/api/stories/${id}`, { headers });
+        const response = await fetch(`${API_BASE_URL}/stories/${id}`, { headers });
         const data = await response.json();
 
         if (!response.ok) {
@@ -284,6 +281,7 @@ function ViewStory() {
     fetchStory();
   }, [id]);
 
+  // ✅ UPDATED: Handle like with environment variable
   const handleLike = async () => {
     if (likeLoading) return;
 
@@ -301,7 +299,7 @@ function ViewStory() {
     try {
       setLikeLoading(true);
 
-      const response = await fetch(`http://localhost:5000/api/stories/${id}/like`, {
+      const response = await fetch(`${API_BASE_URL}/stories/${id}/like`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -329,6 +327,7 @@ function ViewStory() {
     }
   };
 
+  // ✅ UPDATED: Handle comment with environment variable
   const handleComment = async () => {
     if (!commentText.trim() || commentLoading) return;
 
@@ -346,7 +345,7 @@ function ViewStory() {
     try {
       setCommentLoading(true);
 
-      const response = await fetch(`http://localhost:5000/api/stories/${id}/comment`, {
+      const response = await fetch(`${API_BASE_URL}/stories/${id}/comment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -474,7 +473,7 @@ function ViewStory() {
               {story.title}
             </Typography>
 
-            {/* ✅ UPDATED: Author Info with Message Button */}
+            {/* Author Info with Message Button */}
             <Box display="flex" alignItems="center" justifyContent="space-between" mb={4}>
               <Box display="flex" alignItems="center">
                 <Avatar
@@ -498,7 +497,7 @@ function ViewStory() {
                 </Box>
               </Box>
 
-              {/* ✅ MESSAGE BUTTON - Only show if not own story and authenticated */}
+              {/* Message Button */}
               {isAuthenticated && user._id !== story.author?._id && (
                 <ActionButton
                   variant="message"
@@ -511,7 +510,6 @@ function ViewStory() {
                 </ActionButton>
               )}
 
-              {/* Show login prompt for unauthenticated users */}
               {!isAuthenticated && (
                 <Button
                   variant="outlined"
