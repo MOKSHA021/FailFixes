@@ -10,6 +10,9 @@ import { AutoFixHigh } from '@mui/icons-material';
 import { keyframes } from '@mui/material/styles';
 import axios from 'axios';
 
+// ✅ ADD API BASE URL CONFIGURATION
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const AuthContext = createContext();
 
 const perfectFloat = keyframes`
@@ -74,12 +77,17 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
+  // ✅ UPDATED: Login function with environment variable
   const login = async (credentials) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', credentials);
+      console.log('🔐 Attempting login to:', `${API_BASE_URL}/auth/login`);
+      
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
       
       if (response.data.success) {
         const { token, user: userData } = response.data;
+        
+        console.log('✅ Login successful:', userData.username || userData.name);
         
         localStorage.setItem('ff_token', token);
         localStorage.setItem('ff_user', JSON.stringify(userData));
@@ -100,25 +108,32 @@ export function AuthProvider({ children }) {
         
         return { success: true };
       } else {
+        console.error('❌ Login failed:', response.data.message);
         return { 
           success: false, 
           error: response.data.message || 'Login failed' 
         };
       }
     } catch (error) {
+      console.error('❌ Login error:', error.response?.data?.message || error.message);
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Login failed' 
+        error: error.response?.data?.message || 'Login failed. Please check your credentials.' 
       };
     }
   };
 
+  // ✅ UPDATED: Register function with environment variable
   const register = async (userData) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', userData);
+      console.log('📝 Attempting registration to:', `${API_BASE_URL}/auth/register`);
+      
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, userData);
       
       if (response.data.success) {
         const { token, user: newUser } = response.data;
+        
+        console.log('✅ Registration successful:', newUser.username || newUser.name);
         
         localStorage.setItem('ff_token', token);
         localStorage.setItem('ff_user', JSON.stringify(newUser));
@@ -139,29 +154,35 @@ export function AuthProvider({ children }) {
         
         return { success: true };
       } else {
+        console.error('❌ Registration failed:', response.data.message);
         return { 
           success: false, 
           error: response.data.message || 'Registration failed' 
         };
       }
     } catch (error) {
+      console.error('❌ Registration error:', error.response?.data?.message || error.message);
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
+        error: error.response?.data?.message || 'Registration failed. Please try again.' 
       };
     }
   };
 
+  // ✅ Signup is an alias for register
   const signup = async (userData) => {
     return await register(userData);
   };
 
+  // ✅ Logout function
   const logout = () => {
+    console.log('👋 Logging out user');
     localStorage.removeItem('ff_token');
     localStorage.removeItem('ff_user');
     setUser(null);
   };
 
+  // ✅ Update user function
   const updateUser = (updatedUser) => {
     const enhanced = {
       ...updatedUser,
