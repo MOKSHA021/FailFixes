@@ -15,6 +15,7 @@ import {
 import { styled, keyframes } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
+
 // Custom hook for debounced search
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -31,6 +32,7 @@ const useDebounce = (value, delay) => {
 
   return debouncedValue;
 };
+
 
 // 🎨 **ELEGANT ANIMATIONS - Matching Home Style**
 const gentleFloat = keyframes`
@@ -321,6 +323,9 @@ const MiniLikeButton = styled(({ isLiked, ...other }) => <IconButton {...other} 
 }));
 
 function Browse() {
+  // 🔧 FIXED: Use environment variable for API URL
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -384,8 +389,9 @@ function Browse() {
       queryParams.append('limit', newFilters.limit.toString());
 
       console.log('🔍 Fetching stories with params:', Object.fromEntries(queryParams));
+      console.log('🔗 API Base URL:', API_URL);
       
-      const response = await fetch(`http://localhost:5000/api/stories?${queryParams}`);
+      const response = await fetch(`${API_URL}/stories?${queryParams}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -455,7 +461,7 @@ function Browse() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/stories/${storyId}/like`, {
+      const response = await fetch(`${API_URL}/stories/${storyId}/like`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
