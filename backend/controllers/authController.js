@@ -1,25 +1,33 @@
+const crypto = require('crypto');
 const User = require('../models/User');
+const { sendVerificationEmail } = require('../utils/emailService');
 
-// @desc    Register user
+// @desc    Register user (signup)
 // @route   POST /api/auth/signup & POST /api/auth/register
 // @access  Public
 exports.signup = async (req, res) => {
   try {
-    // 🎯 KEY FIX: Extract displayName from request body and map it to name
-    const { name, email, username, password, displayName, allowAnonymous } = req.body;
-    
+    const {
+      name,
+      email,
+      username,
+      password,
+      displayName,
+      allowAnonymous,
+    } = req.body;
+
     // Use displayName if provided, otherwise use name, otherwise use username as fallback
     const actualName = displayName || name || username;
 
-    console.log('Signup attempt for:', { 
-      name: actualName, // This will now always have a value
-      email, 
-      username 
+    console.log('Signup attempt for:', {
+      name: actualName,
+      email,
+      username,
     });
 
     // Check if user exists
     const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
+      $or: [{ email }, { username }],
     });
 
     if (existingUser) {
@@ -27,82 +35,64 @@ exports.signup = async (req, res) => {
       console.log(`User already exists with ${field}:`, existingUser[field]);
       return res.status(400).json({
         success: false,
-        message: `User with this ${field} already exists`
+        message: `User with this ${field} already exists`,
       });
     }
 
     // 🎯 Create user with mapped fields
-    const user = new User({ 
-      name: actualName, // Map displayName/name/username to name field
-      email, 
-      username, 
+    const user = new User({
+      name: actualName,
+      email,
+      username,
       password,
-      allowAnonymous: allowAnonymous || false
+      allowAnonymous: allowAnonymous || false,
+      isVerified: false,
     });
-    
+
+    // Save user (password hashing happens in pre-save)
     await user.save();
 
-    // Generate token
-    const token = user.generateAuthToken();
+    // 🎯 Generate email verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
 
-    // Update login stats WITHOUT triggering validation
-    await User.findByIdAndUpdate(user._id, {
-      $set: { lastLogin: new Date() },
-      $inc: { loginCount: 1 }
-    }, {
-      runValidators: false  // This prevents validation errors
-    });
+    user.emailVerificationToken = verificationToken;
+    user.emailVerificationExpires = Date.now() + 1000 * 60 * 60 * 24; // 24 hours
+    await user.save({ validateBeforeSave: false });
 
-    // Return user data with fallbacks
-    const userData = {
-      id: user._id,
-      name: user.name || user.username || '',
-      email: user.email,
-      username: user.username,
-      bio: user.bio || '',
-      location: user.location || '',
-      website: user.website || '',
-      stats: user.stats || {
-        storiesCount: 0,
-        totalViews: 0,
-        totalLikes: 0,
-        followersCount: 0,
-        followingCount: 0
-      },
-      isVerified: user.isVerified || false,
-      role: user.role || 'user',
-      createdAt: user.createdAt
-    };
+    // 🎯 Send verification email
+    await sendVerificationEmail(user.email, verificationToken);
 
-    console.log('User created successfully:', user.username);
+    console.log(
+      'User created successfully (verification pending):',
+      user.username
+    );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Account created successfully! Welcome to FailFixes!',
-      token,
-      user: userData
+      message:
+        'Account created! Please check your email to verify your account before logging in.',
     });
   } catch (error) {
     console.error('=== SIGNUP ERROR ===');
     console.error('Message:', error.message);
     console.error('Stack:', error.stack);
     console.error('====================');
-    
+
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
       return res.status(400).json({
         success: false,
-        message: `User with this ${field} already exists`
+        message: `User with this ${field} already exists`,
       });
     }
-    
-    res.status(500).json({ 
-      success: false, 
+
+    res.status(500).json({
+      success: false,
       message: 'Server error during signup. Please try again.',
-      ...(process.env.NODE_ENV === 'development' && { 
+      ...(process.env.NODE_ENV === 'development' && {
         error: error.message,
-        stack: error.stack 
-      })
+        stack: error.stack,
+      }),
     });
   }
 };
@@ -119,34 +109,52 @@ exports.login = async (req, res) => {
       console.log('Missing credentials in login attempt');
       return res.status(400).json({
         success: false,
-        message: 'Please provide email/username and password'
+        message: 'Please provide email/username and password',
       });
     }
 
     console.log('=== LOGIN ATTEMPT ===');
     console.log('Identifier:', identifier);
 
-    // Find user and EXPLICITLY select password field
+    // Find user and explicitly select password field
     const user = await User.findOne({
       $or: [
         { email: identifier.toLowerCase() },
-        { username: identifier.toLowerCase() }
-      ]
+        { username: identifier.toLowerCase() },
+      ],
     }).select('+password');
 
     if (!user) {
-      console.log('Login failed: User not found for identifier:', identifier);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid credentials' 
+      console.log(
+        'Login failed: User not found for identifier:',
+        identifier
+      );
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
       });
     }
 
     if (!user.isActive) {
-      console.log('Login failed: User account is deactivated:', user.username);
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Account is deactivated' 
+      console.log(
+        'Login failed: User account is deactivated:',
+        user.username
+      );
+      return res.status(403).json({
+        success: false,
+        message: 'Account is deactivated',
+      });
+    }
+
+    // ✅ Block login if email not verified
+    if (!user.isVerified) {
+      console.log(
+        'Login failed: Email not verified for user:',
+        user.username
+      );
+      return res.status(403).json({
+        success: false,
+        message: 'Please verify your email before logging in.',
       });
     }
 
@@ -155,10 +163,13 @@ exports.login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-      console.log('Login failed: Invalid password for user:', user.username);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid credentials' 
+      console.log(
+        'Login failed: Invalid password for user:',
+        user.username
+      );
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
       });
     }
 
@@ -168,35 +179,36 @@ exports.login = async (req, res) => {
 
     // Update login stats WITHOUT triggering validation
     await User.findByIdAndUpdate(
-      user._id, 
-      { 
+      user._id,
+      {
         $set: { lastLogin: new Date() },
-        $inc: { loginCount: 1 }
+        $inc: { loginCount: 1 },
       },
-      { 
-        runValidators: false  // This prevents validation errors!
+      {
+        runValidators: false,
       }
     );
 
     // Return user data with fallbacks for missing fields
     const userData = {
       id: user._id,
-      name: user.name || user.username || '', // Fallback if name is missing
+      name: user.name || user.username || '',
       email: user.email,
       username: user.username,
       bio: user.bio || '',
       location: user.location || '',
       website: user.website || '',
-      stats: user.stats || {
-        storiesCount: 0,
-        totalViews: 0,
-        totalLikes: 0,
-        followersCount: 0,
-        followingCount: 0
-      },
+      stats:
+        user.stats || {
+          storiesCount: 0,
+          totalViews: 0,
+          totalLikes: 0,
+          followersCount: 0,
+          followingCount: 0,
+        },
       isVerified: user.isVerified || false,
       role: user.role || 'user',
-      lastLogin: new Date()
+      lastLogin: new Date(),
     };
 
     console.log('=== LOGIN SUCCESS ===');
@@ -207,24 +219,68 @@ exports.login = async (req, res) => {
       success: true,
       message: 'Login successful',
       token,
-      user: userData
+      user: userData,
     });
-
   } catch (error) {
     console.error('=== LOGIN ERROR ===');
     console.error('Error name:', error.name);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     console.error('===================');
-    
-    res.status(500).json({ 
-      success: false, 
+
+    res.status(500).json({
+      success: false,
       message: 'Server error during login. Please try again.',
-      ...(process.env.NODE_ENV === 'development' && { 
+      ...(process.env.NODE_ENV === 'development' && {
         error: error.message,
-        stack: error.stack 
-      })
+        stack: error.stack,
+      }),
     });
+  }
+};
+
+// @desc    Verify email via token
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).send('Invalid verification link.');
+    }
+
+    const user = await User.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .send('Verification link is invalid or has expired.');
+    }
+
+    user.isVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    console.log('Email verified for user:', user.username);
+
+    const frontendUrl = process.env.FRONTEND_URL;
+    if (frontendUrl) {
+      return res.redirect(`${frontendUrl}/login?verified=1`);
+    }
+
+    return res.send(
+      'Email verified successfully. You can now close this tab and log in.'
+    );
+  } catch (error) {
+    console.error('Email verification error:', error);
+    return res
+      .status(500)
+      .send('Server error during verification. Please try again later.');
   }
 };
 
@@ -235,34 +291,35 @@ exports.getMe = async (req, res) => {
   try {
     const userData = {
       id: req.user._id,
-      name: req.user.name || req.user.username || '', // Fallback if name is missing
+      name: req.user.name || req.user.username || '',
       email: req.user.email,
       username: req.user.username,
       bio: req.user.bio || '',
       location: req.user.location || '',
       website: req.user.website || '',
-      stats: req.user.stats || {
-        storiesCount: 0,
-        totalViews: 0,
-        totalLikes: 0,
-        followersCount: 0,
-        followingCount: 0
-      },
+      stats:
+        req.user.stats || {
+          storiesCount: 0,
+          totalViews: 0,
+          totalLikes: 0,
+          followersCount: 0,
+          followingCount: 0,
+        },
       isVerified: req.user.isVerified || false,
       role: req.user.role || 'user',
       preferences: req.user.preferences || {},
-      createdAt: req.user.createdAt
+      createdAt: req.user.createdAt,
     };
 
     res.json({
       success: true,
-      user: userData
+      user: userData,
     });
   } catch (error) {
     console.error('Get user error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching user data' 
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user data',
     });
   }
 };

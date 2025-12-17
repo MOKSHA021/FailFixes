@@ -1,3 +1,6 @@
+// Load environment variables from .env
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -41,12 +44,12 @@ const startServer = async () => {
     const io = socketIo(server, {
       cors: {
         origin: allowedOrigins,
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
         credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization"]
+        allowedHeaders: ['Content-Type', 'Authorization'],
       },
       transports: ['websocket', 'polling'], // ✅ Important for Render
-      allowEIO3: true
+      allowEIO3: true,
     });
 
     // ✅ SOCKET.IO AUTHENTICATION MIDDLEWARE
@@ -56,23 +59,23 @@ const startServer = async () => {
         if (!token) {
           return next(new Error('Authentication error'));
         }
-        
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.id);
-        
+
         if (!user) {
           return next(new Error('User not found'));
         }
-        
+
         socket.userId = user._id.toString();
         socket.username = user.username || user.name;
         socket.userInfo = {
           id: user._id,
           name: user.name,
           username: user.username,
-          avatar: user.avatar
+          avatar: user.avatar,
         };
-        
+
         next();
       } catch (err) {
         console.error('Socket auth error:', err);
@@ -86,21 +89,21 @@ const startServer = async () => {
     // ✅ SOCKET.IO CONNECTION HANDLING
     io.on('connection', (socket) => {
       console.log(`🔌 User connected: ${socket.username} (${socket.userId})`);
-      
+
       // Add user to active users
       activeUsers.set(socket.userId, {
         socketId: socket.id,
         userInfo: socket.userInfo,
-        lastSeen: new Date()
+        lastSeen: new Date(),
       });
-      
+
       // Join user to their personal room
       socket.join(`user_${socket.userId}`);
-      
+
       // Broadcast user online status
       socket.broadcast.emit('userOnline', {
         userId: socket.userId,
-        userInfo: socket.userInfo
+        userInfo: socket.userInfo,
       });
 
       // Join user's existing chats
@@ -125,7 +128,7 @@ const startServer = async () => {
       socket.on('sendMessage', async (data) => {
         try {
           const { chatId, content, messageType = 'text' } = data;
-          
+
           const chat = await Chat.findById(chatId);
           if (!chat) {
             socket.emit('error', { message: 'Chat not found' });
@@ -140,20 +143,20 @@ const startServer = async () => {
           const newMessage = {
             sender: socket.userId,
             content: content.trim(),
-            messageType
+            messageType,
           };
 
           chat.messages.push(newMessage);
-          
+
           chat.lastMessage = {
             content: content.trim(),
             sender: socket.userId,
-            timestamp: new Date()
+            timestamp: new Date(),
           };
-          
+
           await chat.save();
           await chat.populate('messages.sender', 'name username avatar');
-          
+
           const savedMessage = chat.messages[chat.messages.length - 1];
 
           io.to(`chat_${chatId}`).emit('newMessage', {
@@ -161,10 +164,9 @@ const startServer = async () => {
             message: savedMessage,
             chat: {
               _id: chat._id,
-              lastMessage: chat.lastMessage
-            }
+              lastMessage: chat.lastMessage,
+            },
           });
-
         } catch (error) {
           console.error('Send message error:', error);
           socket.emit('error', { message: 'Failed to send message' });
@@ -177,7 +179,7 @@ const startServer = async () => {
         socket.to(`chat_${chatId}`).emit('userTyping', {
           userId: socket.userId,
           username: socket.username,
-          isTyping
+          isTyping,
         });
       });
 
@@ -186,7 +188,7 @@ const startServer = async () => {
         console.log(`🔌 User disconnected: ${socket.username}`);
         activeUsers.delete(socket.userId);
         socket.broadcast.emit('userOffline', {
-          userId: socket.userId
+          userId: socket.userId,
         });
       });
     });
@@ -201,8 +203,8 @@ const startServer = async () => {
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║                    🎉 FailFixes Server                      ║
-║                   Started Successfully!                     ║
+║                     🎉 FailFixes Server                      ║
+║                     Started Successfully!                    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║ 🌐 Port: ${PORT.toString().padEnd(47)} ║
 ║ 📱 Environment: ${(process.env.NODE_ENV || 'development').padEnd(36)} ║  
@@ -213,6 +215,7 @@ const startServer = async () => {
 ║ 📊 Database: ${config.database.uri.includes('mongodb.net') ? 'MongoDB Atlas'.padEnd(33) : 'Local MongoDB'.padEnd(33)} ║
 ╚══════════════════════════════════════════════════════════════╝
 
+
 🔧 Available Endpoints:
    • GET  /api/health           - Health check
    • POST /api/auth/login       - User login
@@ -222,6 +225,7 @@ const startServer = async () => {
    • GET  /api/users/dashboard  - User dashboard
    • GET  /api/chats            - Get user chats
    • POST /api/chats/direct     - Create direct chat
+
 
 💡 Tips:
    • Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}
@@ -235,7 +239,7 @@ const startServer = async () => {
       console.error('💥 UNHANDLED REJECTION! Shutting down...');
       console.error('Error name:', err.name);
       console.error('Error message:', err.message);
-      
+
       server.close(() => {
         process.exit(1);
       });
@@ -244,17 +248,17 @@ const startServer = async () => {
     // Graceful shutdown handlers
     const gracefulShutdown = (signal) => {
       console.log(`\n👋 ${signal} received, shutting down gracefully...`);
-      
+
       server.close(async () => {
         console.log('💤 HTTP server closed');
-        
+
         try {
           await require('mongoose').connection.close();
           console.log('📤 Database connection closed');
         } catch (err) {
           console.error('❌ Error closing database connection:', err);
         }
-        
+
         console.log('✅ Graceful shutdown completed');
         process.exit(0);
       });

@@ -2,123 +2,157 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const userSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
-    required: [true, 'Name is required'],
-    trim: true,
-    maxlength: [50, 'Name cannot exceed 50 characters'],
-    minlength: [2, 'Name must be at least 2 characters']
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+      maxlength: [50, 'Name cannot exceed 50 characters'],
+      minlength: [2, 'Name must be at least 2 characters'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        'Please enter a valid email',
+      ],
+    },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow null/undefined but enforce uniqueness when present
+      lowercase: true,
+      trim: true,
+      minlength: [3, 'Username must be at least 3 characters'],
+      maxlength: [20, 'Username cannot exceed 20 characters'],
+      match: [
+        /^[a-zA-Z0-9_]+$/,
+        'Username can only contain letters, numbers, and underscores',
+      ],
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+      minlength: [6, 'Password must be at least 6 characters'],
+      select: false,
+    },
+    bio: {
+      type: String,
+      maxlength: [500, 'Bio cannot exceed 500 characters'],
+      default: '',
+    },
+    location: {
+      type: String,
+      maxlength: [100, 'Location cannot exceed 100 characters'],
+      default: '',
+    },
+    website: {
+      type: String,
+      maxlength: [200, 'Website URL cannot exceed 200 characters'],
+      default: '',
+    },
+    avatar: {
+      type: String,
+      default: '',
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    // ✅ Email verification status
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // Optional: store allowAnonymous preference
+    allowAnonymous: {
+      type: Boolean,
+      default: false,
+    },
+
+    role: {
+      type: String,
+      enum: ['user', 'moderator', 'admin'],
+      default: 'user',
+    },
+
+    // 🎯 USER STATISTICS
+    stats: {
+      storiesCount: { type: Number, default: 0 },
+      totalViews: { type: Number, default: 0 },
+      totalLikes: { type: Number, default: 0 },
+      totalComments: { type: Number, default: 0 },
+      followersCount: { type: Number, default: 0 },
+      followingCount: { type: Number, default: 0 },
+    },
+
+    // 🎯 FOLLOW SYSTEM
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+
+    // 🎯 USER PREFERENCES
+    preferences: {
+      emailNotifications: { type: Boolean, default: true },
+      profileVisibility: {
+        type: String,
+        enum: ['public', 'private'],
+        default: 'public',
+      },
+      showEmail: { type: Boolean, default: false },
+    },
+
+    // 🎯 LOGIN TRACKING
+    lastLogin: { type: Date, default: null },
+    loginCount: { type: Number, default: 0 },
   },
-  email: { 
-    type: String, 
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-  },
-  username: { 
-    type: String, 
-    unique: true,
-    sparse: true, // Allow null/undefined but enforce uniqueness when present
-    lowercase: true,
-    trim: true,
-    minlength: [3, 'Username must be at least 3 characters'],
-    maxlength: [20, 'Username cannot exceed 20 characters'],
-    match: [/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores']
-  },
-  password: { 
-    type: String, 
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false 
-  },
-  bio: { 
-    type: String, 
-    maxlength: [500, 'Bio cannot exceed 500 characters'], 
-    default: '' 
-  },
-  location: { 
-    type: String, 
-    maxlength: [100, 'Location cannot exceed 100 characters'], 
-    default: '' 
-  },
-  website: { 
-    type: String, 
-    maxlength: [200, 'Website URL cannot exceed 200 characters'], 
-    default: '' 
-  },
-  avatar: {
-    type: String,
-    default: ''
-  },
-  isActive: { 
-    type: Boolean, 
-    default: true 
-  },
-  isVerified: { 
-    type: Boolean, 
-    default: false 
-  },
-  role: { 
-    type: String, 
-    enum: ['user', 'moderator', 'admin'], 
-    default: 'user' 
-  },
-  
-  // 🎯 USER STATISTICS
-  stats: {
-    storiesCount: { type: Number, default: 0 },
-    totalViews: { type: Number, default: 0 },
-    totalLikes: { type: Number, default: 0 },
-    totalComments: { type: Number, default: 0 },
-    followersCount: { type: Number, default: 0 },
-    followingCount: { type: Number, default: 0 }
-  },
-  
-  // 🎯 FOLLOW SYSTEM
-  followers: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  following: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  
-  // 🎯 USER PREFERENCES
-  preferences: {
-    emailNotifications: { type: Boolean, default: true },
-    profileVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-    showEmail: { type: Boolean, default: false }
-  },
-  
-  // 🎯 LOGIN TRACKING
-  lastLogin: { type: Date, default: null },
-  loginCount: { type: Number, default: 0 }
-}, {
-  timestamps: true,
-  toJSON: { 
-    virtuals: true,
-    transform: (doc, ret) => {
-      delete ret.password;
-      return ret;
-    }
-  },
-  toObject: { virtuals: true }
-});
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret) => {
+        delete ret.password;
+        return ret;
+      },
+    },
+    toObject: { virtuals: true },
+  }
+);
 
 // 🎯 VIRTUAL FIELDS
-userSchema.virtual('displayUsername').get(function() {
+userSchema.virtual('displayUsername').get(function () {
   return this.username || this.name || `user_${this._id.toString().slice(-6)}`;
 });
 
-userSchema.virtual('fullDisplayName').get(function() {
+userSchema.virtual('fullDisplayName').get(function () {
   return this.name + (this.username ? ` (@${this.username})` : '');
 });
 
-userSchema.virtual('isFollowable').get(function() {
+userSchema.virtual('isFollowable').get(function () {
   return this.preferences.profileVisibility === 'public';
 });
 
@@ -132,7 +166,7 @@ userSchema.index({ followers: 1 });
 userSchema.index({ following: 1 });
 
 // 🎯 PRE-SAVE MIDDLEWARE
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   // Hash password if modified
   if (this.isModified('password')) {
     try {
@@ -142,7 +176,7 @@ userSchema.pre('save', async function(next) {
       return next(err);
     }
   }
-  
+
   // Update follower/following counts
   if (this.isModified('followers')) {
     this.stats.followersCount = this.followers.length;
@@ -150,64 +184,72 @@ userSchema.pre('save', async function(next) {
   if (this.isModified('following')) {
     this.stats.followingCount = this.following.length;
   }
-  
+
   next();
 });
 
 // 🎯 INSTANCE METHODS
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.methods.generateAuthToken = function() {
+userSchema.methods.generateAuthToken = function () {
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
   return jwt.sign(
-    { 
-      id: this._id, 
-      username: this.username || this.name, 
+    {
+      id: this._id,
+      username: this.username || this.name,
       role: this.role,
-      displayUsername: this.displayUsername
+      displayUsername: this.displayUsername,
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );
 };
 
-userSchema.methods.isFollowing = function(userId) {
-  return this.following.some(followId => followId.toString() === userId.toString());
+userSchema.methods.isFollowing = function (userId) {
+  return this.following.some(
+    (followId) => followId.toString() === userId.toString()
+  );
 };
 
-userSchema.methods.hasFollower = function(userId) {
-  return this.followers.some(followId => followId.toString() === userId.toString());
+userSchema.methods.hasFollower = function (userId) {
+  return this.followers.some(
+    (followId) => followId.toString() === userId.toString()
+  );
 };
 
-userSchema.methods.follow = function(userId) {
+userSchema.methods.follow = function (userId) {
   if (!this.isFollowing(userId)) {
     this.following.push(userId);
     this.stats.followingCount = this.following.length;
   }
 };
 
-userSchema.methods.unfollow = function(userId) {
-  const index = this.following.findIndex(followId => followId.toString() === userId.toString());
+userSchema.methods.unfollow = function (userId) {
+  const index = this.following.findIndex(
+    (followId) => followId.toString() === userId.toString()
+  );
   if (index > -1) {
     this.following.splice(index, 1);
     this.stats.followingCount = this.following.length;
   }
 };
 
-userSchema.methods.addFollower = function(userId) {
+userSchema.methods.addFollower = function (userId) {
   if (!this.hasFollower(userId)) {
     this.followers.push(userId);
     this.stats.followersCount = this.followers.length;
   }
 };
 
-userSchema.methods.removeFollower = function(userId) {
-  const index = this.followers.findIndex(followId => followId.toString() === userId.toString());
+userSchema.methods.removeFollower = function (userId) {
+  const index = this.followers.findIndex(
+    (followId) => followId.toString() === userId.toString()
+  );
   if (index > -1) {
     this.followers.splice(index, 1);
     this.stats.followersCount = this.followers.length;
@@ -215,24 +257,21 @@ userSchema.methods.removeFollower = function(userId) {
 };
 
 // 🎯 STATIC METHODS
-userSchema.statics.findByUsername = function(username) {
+userSchema.statics.findByUsername = function (username) {
   return this.findOne({
-    $or: [
-      { username: username.toLowerCase() },
-      { name: username }
-    ]
+    $or: [{ username: username.toLowerCase() }, { name: username }],
   });
 };
 
-userSchema.statics.findSuggestedUsers = function(currentUserId, limit = 5) {
+userSchema.statics.findSuggestedUsers = function (currentUserId, limit = 5) {
   return this.find({
     _id: { $ne: currentUserId },
     isActive: true,
-    'preferences.profileVisibility': 'public'
+    'preferences.profileVisibility': 'public',
   })
-  .sort({ 'stats.followersCount': -1, createdAt: -1 })
-  .limit(limit)
-  .select('name username bio avatar stats');
+    .sort({ 'stats.followersCount': -1, createdAt: -1 })
+    .limit(limit)
+    .select('name username bio avatar stats');
 };
 
 module.exports = mongoose.model('User', userSchema);
