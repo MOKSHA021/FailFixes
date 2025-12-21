@@ -1,6 +1,5 @@
-const crypto = require('crypto');
+// controllers/authController.js
 const User = require('../models/User');
-const { sendVerificationEmail } = require('../utils/emailService');
 
 // @desc    Register user (signup)
 // @route   POST /api/auth/signup & POST /api/auth/register
@@ -16,7 +15,6 @@ exports.signup = async (req, res) => {
       allowAnonymous,
     } = req.body;
 
-    // Use displayName if provided, otherwise use name, otherwise use username as fallback
     const actualName = displayName || name || username;
 
     console.log('Signup attempt for:', {
@@ -39,38 +37,24 @@ exports.signup = async (req, res) => {
       });
     }
 
-    // 🎯 Create user with mapped fields
+    // Create user (no email verification)
     const user = new User({
       name: actualName,
       email,
       username,
       password,
       allowAnonymous: allowAnonymous || false,
-      isVerified: false,
+      isVerified: true, // mark as verified by default
     });
 
     // Save user (password hashing happens in pre-save)
     await user.save();
 
-    // 🎯 Generate email verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-
-    user.emailVerificationToken = verificationToken;
-    user.emailVerificationExpires = Date.now() + 1000 * 60 * 60 * 24; // 24 hours
-    await user.save({ validateBeforeSave: false });
-
-    // 🎯 Send verification email
-    await sendVerificationEmail(user.email, verificationToken);
-
-    console.log(
-      'User created successfully (verification pending):',
-      user.username
-    );
+    console.log('User created successfully:', user.username);
 
     return res.status(201).json({
       success: true,
-      message:
-        'Account created! Please check your email to verify your account before logging in.',
+      message: 'Account created successfully. You can now log in.',
     });
   } catch (error) {
     console.error('=== SIGNUP ERROR ===');
@@ -146,17 +130,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ✅ Block login if email not verified
-    if (!user.isVerified) {
-      console.log(
-        'Login failed: Email not verified for user:',
-        user.username
-      );
-      return res.status(403).json({
-        success: false,
-        message: 'Please verify your email before logging in.',
-      });
-    }
+    // Email verification check removed
 
     // Compare password
     console.log('Comparing passwords...');
@@ -236,51 +210,6 @@ exports.login = async (req, res) => {
         stack: error.stack,
       }),
     });
-  }
-};
-
-// @desc    Verify email via token
-// @route   GET /api/auth/verify-email/:token
-// @access  Public
-exports.verifyEmail = async (req, res) => {
-  try {
-    const { token } = req.params;
-
-    if (!token) {
-      return res.status(400).send('Invalid verification link.');
-    }
-
-    const user = await User.findOne({
-      emailVerificationToken: token,
-      emailVerificationExpires: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res
-        .status(400)
-        .send('Verification link is invalid or has expired.');
-    }
-
-    user.isVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-
-    console.log('Email verified for user:', user.username);
-
-    const frontendUrl = process.env.FRONTEND_URL;
-    if (frontendUrl) {
-      return res.redirect(`${frontendUrl}/login?verified=1`);
-    }
-
-    return res.send(
-      'Email verified successfully. You can now close this tab and log in.'
-    );
-  } catch (error) {
-    console.error('Email verification error:', error);
-    return res
-      .status(500)
-      .send('Server error during verification. Please try again later.');
   }
 };
 

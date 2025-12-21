@@ -1,3 +1,4 @@
+// app.js
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -16,7 +17,7 @@ const app = express();
 // Trust proxy for rate limiting (important for Render)
 app.set('trust proxy', 1);
 
-// ✅ UPDATED: CORS Configuration for Render
+// ✅ CORS Configuration for Render
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -24,70 +25,79 @@ const allowedOrigins = [
   'http://localhost:3002',
   'http://127.0.0.1:3002',
   'https://failfixes-frontend.onrender.com',
-  'https://failfixes.onrender.com', // ✅ Add your frontend URL
-  process.env.FRONTEND_URL // ✅ From environment variable
+  'https://failfixes.onrender.com',
+  process.env.FRONTEND_URL,
 ].filter(Boolean); // Remove undefined values
 
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, curl)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('⚠️  CORS blocked origin:', origin);
-      console.log('✅ Allowed origins:', allowedOrigins);
-      callback(null, true); // ✅ Allow anyway in production (be careful with this)
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin'
-  ]
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log('⚠️  CORS blocked origin:', origin);
+        console.log('✅ Allowed origins:', allowedOrigins);
+        // In production you might want to block here instead of allowing:
+        callback(null, true);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+  })
+);
 
 // Handle preflight requests
 app.options('*', cors());
 
 // ✅ BODY PARSING - MUST BE BEFORE ROUTES
-app.use(express.json({
-  limit: '10mb',
-  strict: false
-}));
+app.use(
+  express.json({
+    limit: '10mb',
+    strict: false,
+  })
+);
 
-app.use(express.urlencoded({
-  extended: true,
-  limit: '10mb'
-}));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '10mb',
+  })
+);
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // Compression
 app.use(compression());
 
-// Logging (only in development)
+// Logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
-  
-  // ✅ DEBUG MIDDLEWARE (only in development)
+
+  // Debug middleware (only in development)
   app.use((req, res, next) => {
     console.log(`\n🌐 === REQUEST LOG ===`);
     console.log(`${req.method} ${req.originalUrl}`);
     console.log('Headers:', {
       'content-type': req.headers['content-type'],
-      'authorization': req.headers.authorization ? 'Bearer [PRESENT]' : 'None',
-      'origin': req.headers.origin
+      authorization: req.headers.authorization ? 'Bearer [PRESENT]' : 'None',
+      origin: req.headers.origin,
     });
     if (Object.keys(req.body).length > 0) {
       console.log('Body:', req.body);
@@ -114,7 +124,14 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    features: ['auth', 'stories', 'users', 'chats', 'realtime-chat', 'ai-story-generation']
+    features: [
+      'auth',
+      'stories',
+      'users',
+      'chats',
+      'realtime-chat',
+      'ai-story-generation',
+    ],
   });
 });
 
@@ -125,7 +142,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
@@ -142,8 +159,8 @@ app.get('/api/health', (req, res) => {
       users: 'active',
       chats: 'active',
       socketIO: 'active',
-      ai: process.env.GROQ_API_KEY ? 'active' : 'inactive'
-    }
+      ai: process.env.GROQ_API_KEY ? 'active' : 'inactive',
+    },
   });
 });
 
@@ -166,29 +183,30 @@ app.use('*', (req, res) => {
       auth: {
         register: 'POST /api/auth/register',
         login: 'POST /api/auth/login',
-        me: 'GET /api/auth/me'
+        me: 'GET /api/auth/me',
+        verifyEmail: 'GET /api/auth/verify-email/:token', // ✅ added
       },
       stories: {
         list: 'GET /api/stories',
         byId: 'GET /api/stories/:id',
         create: 'POST /api/stories',
         like: 'POST /api/stories/:id/like',
-        view: 'POST /api/stories/:id/view'
+        view: 'POST /api/stories/:id/view',
       },
       users: {
         profile: 'GET /api/users/profile/:username',
         follow: 'POST /api/users/:username/follow',
-        dashboard: 'GET /api/users/dashboard'
+        dashboard: 'GET /api/users/dashboard',
       },
       chats: {
         list: 'GET /api/chats',
         create: 'POST /api/chats/direct',
-        messages: 'GET /api/chats/:chatId/messages'
+        messages: 'GET /api/chats/:chatId/messages',
       },
       ai: {
-        generate: 'POST /api/ai/generate-story'
-      }
-    }
+        generate: 'POST /api/ai/generate-story',
+      },
+    },
   });
 });
 
@@ -205,13 +223,14 @@ app.use((err, req, res, next) => {
 
   res.status(err.statusCode || 500).json({
     success: false,
-    message: process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : err.message,
+    message:
+      process.env.NODE_ENV === 'production'
+        ? 'Internal server error'
+        : err.message,
     ...(process.env.NODE_ENV === 'development' && {
       error: err.message,
-      stack: err.stack
-    })
+      stack: err.stack,
+    }),
   });
 });
 

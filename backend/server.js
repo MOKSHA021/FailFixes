@@ -1,3 +1,4 @@
+// server.js
 // Load environment variables from .env
 require('dotenv').config();
 
@@ -8,6 +9,12 @@ const jwt = require('jsonwebtoken');
 const app = require('./app');
 const { connectDB } = require('./utils/database');
 const config = require('./config/config');
+
+// 🔎 Resend status on startup (no direct SDK import here)
+console.log('📧 EMAIL PROVIDER STATUS:', {
+  usingResend: !!process.env.RESEND_API_KEY,
+  resendFrom: process.env.RESEND_FROM_EMAIL || 'not set',
+});
 
 // Import models for Socket.IO
 const User = require('./models/User');
@@ -31,16 +38,16 @@ const startServer = async () => {
     // Create HTTP server from Express app
     const server = http.createServer(app);
 
-    // ✅ UPDATED: CORS for Render deployment
+    // CORS for Render deployment (Socket.IO)
     const allowedOrigins = [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
       'http://localhost:3001',
-      'https://failfixes-frontend.onrender.com', // ✅ Add your frontend URL
-      process.env.FRONTEND_URL // ✅ From environment variable
-    ].filter(Boolean); // Remove undefined values
+      'https://failfixes-frontend.onrender.com',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean);
 
-    // ✅ SETUP SOCKET.IO SERVER with Render support
+    // SETUP SOCKET.IO SERVER with Render support
     const io = socketIo(server, {
       cors: {
         origin: allowedOrigins,
@@ -48,11 +55,11 @@ const startServer = async () => {
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization'],
       },
-      transports: ['websocket', 'polling'], // ✅ Important for Render
+      transports: ['websocket', 'polling'], // Important for Render
       allowEIO3: true,
     });
 
-    // ✅ SOCKET.IO AUTHENTICATION MIDDLEWARE
+    // SOCKET.IO AUTHENTICATION MIDDLEWARE
     io.use(async (socket, next) => {
       try {
         const token = socket.handshake.auth.token;
@@ -86,7 +93,7 @@ const startServer = async () => {
     // Active users tracking
     const activeUsers = new Map();
 
-    // ✅ SOCKET.IO CONNECTION HANDLING
+    // SOCKET.IO CONNECTION HANDLING
     io.on('connection', (socket) => {
       console.log(`🔌 User connected: ${socket.username} (${socket.userId})`);
 
@@ -136,7 +143,9 @@ const startServer = async () => {
           }
 
           if (!chat.participants.includes(socket.userId)) {
-            socket.emit('error', { message: 'Not authorized to send messages' });
+            socket.emit('error', {
+              message: 'Not authorized to send messages',
+            });
             return;
           }
 
@@ -193,10 +202,10 @@ const startServer = async () => {
       });
     });
 
-    // ✅ Make io accessible to routes
+    // Make io accessible to routes
     app.set('io', io);
 
-    // ✅ Use PORT from environment or default
+    // Use PORT from environment or default
     const PORT = process.env.PORT || config.port || 5000;
 
     // Start HTTP server with Socket.IO
@@ -207,12 +216,16 @@ const startServer = async () => {
 ║                     Started Successfully!                    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║ 🌐 Port: ${PORT.toString().padEnd(47)} ║
-║ 📱 Environment: ${(process.env.NODE_ENV || 'development').padEnd(36)} ║  
+║ 📱 Environment: ${(process.env.NODE_ENV || 'development').padEnd(36)} ║
 ║ 🕒 Started: ${new Date().toLocaleString().padEnd(38)} ║
 ║ 🚀 API URL: http://localhost:${PORT}/api${' '.repeat(25)} ║
 ║ 🏥 Health: http://localhost:${PORT}/api/health${' '.repeat(18)} ║
 ║ 💬 Socket.IO: ENABLED${' '.repeat(33)} ║
-║ 📊 Database: ${config.database.uri.includes('mongodb.net') ? 'MongoDB Atlas'.padEnd(33) : 'Local MongoDB'.padEnd(33)} ║
+║ 📊 Database: ${
+        config.database.uri.includes('mongodb.net')
+          ? 'MongoDB Atlas'.padEnd(33)
+          : 'Local MongoDB'.padEnd(33)
+      } ║
 ╚══════════════════════════════════════════════════════════════╝
 
 
@@ -265,7 +278,9 @@ const startServer = async () => {
 
       // Force close after 10 seconds
       setTimeout(() => {
-        console.error('⚠️  Could not close connections in time, forcefully shutting down');
+        console.error(
+          '⚠️  Could not close connections in time, forcefully shutting down'
+        );
         process.exit(1);
       }, 10000);
     };

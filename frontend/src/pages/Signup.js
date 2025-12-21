@@ -347,8 +347,8 @@ const ProgressIndicator = styled(LinearProgress)(() => ({
 const Signup = () => {
   const navigate = useNavigate();
   const theme = useTheme();
-  useMediaQuery(theme.breakpoints.down('md')); // kept in case you use isMobile later
-  
+  useMediaQuery(theme.breakpoints.down('md'));
+
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -371,27 +371,22 @@ const Signup = () => {
   }, []);
 
   useEffect(() => {
-    const calculateProgress = () => {
-      const fields = ['email', 'username', 'password', 'confirmPassword'];
-      const filledFields = fields.filter(
-        (field) => formData[field].trim() !== ''
-      ).length;
-      setFormProgress((filledFields / fields.length) * 100);
-    };
-    calculateProgress();
+    const fields = ['email', 'username', 'password', 'confirmPassword'];
+    const filledFields = fields.filter(
+      (field) => formData[field].trim() !== ''
+    ).length;
+    setFormProgress((filledFields / fields.length) * 100);
   }, [formData]);
 
   useEffect(() => {
-    const calculatePasswordStrength = (password) => {
-      let strength = 0;
-      if (password.length >= 6) strength += 25;
-      if (password.match(/[a-z]+/)) strength += 25;
-      if (password.match(/[A-Z]+/)) strength += 25;
-      if (password.match(/[0-9]+/) || password.match(/[^a-zA-Z0-9]+/))
-        strength += 25;
-      setPasswordStrength(strength);
-    };
-    calculatePasswordStrength(formData.password);
+    const password = formData.password;
+    let strength = 0;
+    if (password.length >= 6) strength += 25;
+    if (password.match(/[a-z]+/)) strength += 25;
+    if (password.match(/[A-Z]+/)) strength += 25;
+    if (password.match(/[0-9]+/) || password.match(/[^a-zA-Z0-9]+/))
+      strength += 25;
+    setPasswordStrength(strength);
   }, [formData.password]);
 
   const handleChange = (e) => {
@@ -438,7 +433,6 @@ const Signup = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ Submit: triggers backend signup + email verification flow
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -460,7 +454,7 @@ const Signup = () => {
         setErrors({});
         setSuccessMessage(
           response.data.message ||
-            'Account created! Please check your email to verify your account before logging in.'
+            'Account created successfully. You can now log in.'
         );
 
         setFormData({
@@ -474,7 +468,7 @@ const Signup = () => {
 
         setTimeout(() => {
           navigate('/login');
-        }, 3000);
+        }, 2000);
       }
     } catch (error) {
       if (error.response?.data?.errors) {
@@ -503,7 +497,6 @@ const Signup = () => {
 
   return (
     <BackgroundContainer>
-      {/* Floating Elements */}
       {[...Array(6)].map((_, i) => (
         <FloatingElement
           key={i}
@@ -597,7 +590,6 @@ const Signup = () => {
               value={formProgress}
             />
 
-            {/* ✅ Success message for email verification */}
             {successMessage && (
               <Slide direction="down" in={!!successMessage} timeout={400}>
                 <Alert
@@ -616,7 +608,6 @@ const Signup = () => {
               </Slide>
             )}
 
-            {/* Error message (general) */}
             {errors.general && (
               <Slide direction="down" in={!!errors.general} timeout={400}>
                 <Alert

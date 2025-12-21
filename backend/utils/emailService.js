@@ -1,67 +1,42 @@
 // utils/emailService.js
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// 🔍 Debug current SMTP env (runs once on server start)
-console.log('📧 SMTP CONFIG:', {
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  user: process.env.SMTP_USER,
-  from: process.env.SMTP_FROM,
+// 🔍 Debug Resend env on server start
+console.log('📧 RESEND CONFIG:', {
+  hasApiKey: !!process.env.RESEND_API_KEY,
 });
 
-// ✅ Only create a transporter if all required env vars exist
-let transporter = null;
+// Create Resend client
+let resend = null;
 
-if (
-  process.env.SMTP_HOST &&
-  process.env.SMTP_PORT &&
-  process.env.SMTP_USER &&
-  process.env.SMTP_PASS
-) {
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,                    // e.g. smtp.gmail.com
-    port: Number(process.env.SMTP_PORT || 587),     // 587 for TLS (STARTTLS)
-    secure: false,                                  // Gmail: false for port 587
-    auth: {
-      user: process.env.SMTP_USER,                  // your Gmail
-      pass: process.env.SMTP_PASS,                  // 16-char App Password
-    },
-  });
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
 } else {
   console.warn(
-    '⚠️  SMTP not fully configured. Emails will NOT be sent. ' +
-      'Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in your .env file.'
+    '⚠️  RESEND_API_KEY not set. Emails will NOT be sent.'
   );
 }
 
 async function sendVerificationEmail(to, token) {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
   const verifyUrl = `${backendUrl}/api/auth/verify-email/${token}`;
 
+  // Use Resend onboarding sender (no custom domain needed)
+  const from = 'onboarding@resend.dev';
+  const subject = 'Verify your email for FailFixes';
+
   const html = `
-    <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px;">
-      <h2 style="color:#111827;">Verify your email for <span style="color:#10b981;">FailFixes</span></h2>
-      <p>Thanks for signing up! Please confirm that <strong>${to}</strong> is your email address.</p>
-      <p style="margin: 24px 0;">
-        <a href="${verifyUrl}" 
-           style="background:#10b981;color:#ffffff;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:600;">
-          Verify my email
-        </a>
-      </p>
-      <p>If the button doesn't work, copy and paste this link into your browser:</p>
-      <p style="word-break:break-all;color:#2563eb;">${verifyUrl}</p>
-      <p style="margin-top:24px;color:#6b7280;font-size:14px;">
-        If you didn’t create a FailFixes account, you can safely ignore this email.
-      </p>
-    </div>
+    <p>Thanks for signing up to <strong>FailFixes</strong>!</p>
+    <p>Please verify your email by clicking the link below:</p>
+    <p><a href="${verifyUrl}">Verify my email</a></p>
+    <p>If the button doesn't work, copy and paste this link into your browser:</p>
+    <p>${verifyUrl}</p>
   `;
 
-  // If transporter is not configured, don't crash signup
-  if (!transporter) {
+  if (!resend) {
     console.warn(
-      '📧 sendVerificationEmail called but SMTP is not configured. ' +
-        'Skipping actual send. Would send to:',
+      '📧 sendVerificationEmail called but RESEND_API_KEY is not configured. ' +
+        'Skipping send. Would send to:',
       to,
       'with URL:',
       verifyUrl
@@ -70,24 +45,26 @@ async function sendVerificationEmail(to, token) {
   }
 
   try {
-    const info = await transporter.sendMail({
-      from:
-        process.env.SMTP_FROM ||
-        `"FailFixes" <${process.env.SMTP_USER || 'no-reply@failfixes.app'}>`,
+    const { data, error } = await resend.emails.send({
+      from,
       to,
-      subject: 'Verify your email address',
+      subject,
       html,
     });
 
-    console.log('📧 Verification email sent:', {
+    if (error) {
+      console.error('❌ Resend email error:', error);
+      // Do NOT break signup just because email failed
+      return;
+    }
+
+    console.log('📧 Verification email sent via Resend:', {
       to,
-      messageId: info.messageId,
-      response: info.response,
+      id: data?.id,
     });
   } catch (err) {
-    console.error('❌ Error sending verification email:', err.message);
-    // rethrow so controller can decide to ignore or handle
-    throw err;
+    console.error('❌ Error sending verification email (Resend):', err.message);
+    // Also do not rethrow here so signup stays 201
   }
 }
 

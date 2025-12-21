@@ -1,10 +1,10 @@
+// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const {
   signup,
   login,
   getMe,
-  verifyEmail,
 } = require('../controllers/authController');
 const { auth } = require('../middleware/auth');
 const {
@@ -38,7 +38,6 @@ router.post('/login', validateLogin, login);
 // GET /api/auth/me - Get current user info
 router.get('/me', auth, getMe);
 
-// ✅ GET /api/auth/verify-email/:token - Email verification link
-router.get('/verify-email/:token', verifyEmail);
+// ⛔ verify-email route removed
 
 module.exports = router;
