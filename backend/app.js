@@ -32,16 +32,18 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, Postman, curl)
+      // Allow requests with no origin (mobile apps, Postman, curl, TESTS)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        console.log('⚠️  CORS blocked origin:', origin);
-        console.log('✅ Allowed origins:', allowedOrigins);
-        // In production you might want to block here instead of allowing:
-        callback(null, true);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('⚠️  CORS blocked origin:', origin);
+          console.log('✅ Allowed origins:', allowedOrigins);
+        }
+        // Allow in development/test, block in production
+        callback(null, process.env.NODE_ENV !== 'production');
       }
     },
     credentials: true,
@@ -111,10 +113,11 @@ if (process.env.NODE_ENV === 'development') {
     console.log('=== END LOG ===\n');
     next();
   });
-} else {
+} else if (process.env.NODE_ENV === 'production') {
   // Production logging (minimal)
   app.use(morgan('combined'));
 }
+// Test environment: no logging to keep test output clean
 
 // ✅ ROOT ENDPOINT
 app.get('/', (req, res) => {
@@ -135,11 +138,12 @@ app.get('/', (req, res) => {
   });
 });
 
-// ✅ HEALTH CHECK (Important for Render)
+// ✅ HEALTH CHECK (Important for Render & CI/CD Tests)
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    status: 'healthy',
+    status: 'OK',
+    message: 'FailFixes API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
@@ -147,9 +151,10 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
-    status: 'healthy',
+    status: 'OK',
+    message: 'FailFixes API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
@@ -173,7 +178,10 @@ app.use('/api/ai', aiRoutes);
 
 // ✅ 404 Handler
 app.use('*', (req, res) => {
-  console.log(`❌ 404: ${req.method} ${req.originalUrl} not found`);
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(`❌ 404: ${req.method} ${req.originalUrl} not found`);
+  }
+  
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.originalUrl} not found`,
@@ -184,24 +192,37 @@ app.use('*', (req, res) => {
         register: 'POST /api/auth/register',
         login: 'POST /api/auth/login',
         me: 'GET /api/auth/me',
-        verifyEmail: 'GET /api/auth/verify-email/:token', // ✅ added
+        verifyEmail: 'GET /api/auth/verify-email/:token',
+        updateProfile: 'PUT /api/auth/profile',
+        changePassword: 'PUT /api/auth/change-password',
       },
       stories: {
         list: 'GET /api/stories',
         byId: 'GET /api/stories/:id',
+        byAuthor: 'GET /api/stories/author/:username',
         create: 'POST /api/stories',
-        like: 'POST /api/stories/:id/like',
+        update: 'PUT /api/stories/:id',
+        delete: 'DELETE /api/stories/:id',
+        like: 'PATCH /api/stories/:id/like',
         view: 'POST /api/stories/:id/view',
+        comment: 'POST /api/stories/:id/comment',
+        getComments: 'GET /api/stories/:id/comments',
       },
       users: {
         profile: 'GET /api/users/profile/:username',
         follow: 'POST /api/users/:username/follow',
+        unfollow: 'DELETE /api/users/:username/follow',
         dashboard: 'GET /api/users/dashboard',
+        stats: 'GET /api/users/me/stats',
+        stories: 'GET /api/users/me/stories',
+        feed: 'GET /api/users/me/feed',
+        search: 'GET /api/users/search',
       },
       chats: {
         list: 'GET /api/chats',
         create: 'POST /api/chats/direct',
         messages: 'GET /api/chats/:chatId/messages',
+        sendMessage: 'POST /api/chats/:chatId/messages',
       },
       ai: {
         generate: 'POST /api/ai/generate-story',
@@ -212,16 +233,21 @@ app.use('*', (req, res) => {
 
 // ✅ GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
-  console.error('\n❌ === GLOBAL ERROR ===');
-  console.error('URL:', req.originalUrl);
-  console.error('Method:', req.method);
-  console.error('Error:', err.message);
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Stack:', err.stack);
+  // Only log errors in non-test environments
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('\n❌ === GLOBAL ERROR ===');
+    console.error('URL:', req.originalUrl);
+    console.error('Method:', req.method);
+    console.error('Error:', err.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Stack:', err.stack);
+    }
+    console.error('=== END ERROR ===\n');
   }
-  console.error('=== END ERROR ===\n');
 
-  res.status(err.statusCode || 500).json({
+  const statusCode = err.statusCode || err.status || 500;
+  
+  res.status(statusCode).json({
     success: false,
     message:
       process.env.NODE_ENV === 'production'
@@ -234,4 +260,5 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ✅ Export app for testing
 module.exports = app;
