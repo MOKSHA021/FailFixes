@@ -118,4 +118,9 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { auth, optionalAuth };
+// ✅ FIXED: Export both `auth` and `protect` (they're the same function)
+module.exports = { 
+  auth, 
+  protect: auth,  // ← ADD THIS LINE
+  optionalAuth 
+};

@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const userViewCounts = new Map();
 
-// ✅ FIXED: Export getAllStories (matching your routes)
+// ✅ GET ALL STORIES
 exports.getAllStories = async (req, res) => {
   try {
     const {
@@ -108,7 +108,7 @@ exports.getAllStories = async (req, res) => {
       filters: { category: category || 'all', search: search || '', sortBy, authorUsername }
     });
   } catch (err) {
-    console.error('Get stories error:', err);
+    console.error('❌ Get stories error:', err);
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching stories'
@@ -116,7 +116,7 @@ exports.getAllStories = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Complete getStoryById function
+// ✅ GET STORY BY ID
 exports.getStoryById = async (req, res) => {
   try {
     const storyId = req.params.id;
@@ -166,11 +166,9 @@ exports.getStoryById = async (req, res) => {
     }
 
     if (shouldIncrement) {
-      await Story.findByIdAndUpdate(storyId, { $inc: { views: 1 } });
-      if (story.views !== undefined) {
-        story.views += 1;
-      } else {
-        story.views = 1;
+      await Story.findByIdAndUpdate(storyId, { $inc: { 'stats.views': 1 } });
+      if (story.stats && story.stats.views !== undefined) {
+        story.stats.views += 1;
       }
     }
 
@@ -191,7 +189,7 @@ exports.getStoryById = async (req, res) => {
   }
 };
 
-// ✅ ENHANCED: Create story with proper authorUsername setting
+// ✅ CREATE STORY WITH VALIDATION
 exports.createStory = async (req, res) => {
   try {
     const {
@@ -212,10 +210,47 @@ exports.createStory = async (req, res) => {
       });
     }
 
+    // ✅ VALIDATE BEFORE DATABASE OPERATIONS
     if (!title || !content) {
       return res.status(400).json({
         success: false,
         message: 'Title and content are required'
+      });
+    }
+
+    if (title.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title must be at least 10 characters'
+      });
+    }
+
+    if (title.trim().length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title cannot exceed 200 characters'
+      });
+    }
+
+    if (content.trim().length < 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Story content must be at least 100 characters'
+      });
+    }
+
+    const validCategories = ['business', 'personal', 'education', 'health', 'relationships', 'career', 'technology', 'creative'];
+    if (!category) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category is required'
+      });
+    }
+
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid category. Must be one of: ${validCategories.join(', ')}`
       });
     }
 
@@ -237,6 +272,7 @@ exports.createStory = async (req, res) => {
       cleanMeta.keyLessons = metadata.keyLessons.filter(Boolean);
     }
     if (metadata.readTime) cleanMeta.readTime = metadata.readTime;
+    if (metadata.failureType) cleanMeta.failureType = metadata.failureType;
 
     const story = new Story({
       title: title.trim(),
@@ -284,6 +320,16 @@ exports.createStory = async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Create story error:', err);
+    
+    // ✅ HANDLE VALIDATION ERRORS PROPERLY
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        success: false, 
+        message: messages.join(', ')
+      });
+    }
+    
     res.status(500).json({ 
       success: false, 
       message: 'Error creating story'
@@ -291,7 +337,7 @@ exports.createStory = async (req, res) => {
   }
 };
 
-// ✅ ADD: Missing trackStoryView function
+// ✅ TRACK STORY VIEW
 exports.trackStoryView = async (req, res) => {
   try {
     const { id } = req.params;
@@ -306,7 +352,7 @@ exports.trackStoryView = async (req, res) => {
 
     const story = await Story.findByIdAndUpdate(
       id,
-      { $inc: { views: 1 } },
+      { $inc: { 'stats.views': 1 } },
       { new: true }
     );
 
@@ -317,11 +363,11 @@ exports.trackStoryView = async (req, res) => {
       });
     }
 
-    console.log('✅ Story view tracked. New count:', story.views);
+    console.log('✅ Story view tracked. New count:', story.stats.views);
 
     res.json({ 
       success: true, 
-      views: story.views,
+      views: story.stats.views,
       message: 'Story view tracked successfully' 
     });
   } catch (error) {
@@ -334,7 +380,7 @@ exports.trackStoryView = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Complete getStoriesByAuthor function
+// ✅ GET STORIES BY AUTHOR
 exports.getStoriesByAuthor = async (req, res) => {
   try {
     const { authorUsername } = req.params;
@@ -627,7 +673,7 @@ exports.addComment = async (req, res) => {
   }
 };
 
-// ✅ UPDATE STORY
+// ✅ UPDATE STORY WITH VALIDATION
 exports.updateStory = async (req, res) => {
   try {
     const storyId = req.params.id;
@@ -670,6 +716,16 @@ exports.updateStory = async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Update story error:', err);
+    
+    // ✅ HANDLE VALIDATION ERRORS
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        success: false, 
+        message: messages.join(', ')
+      });
+    }
+    
     res.status(500).json({ 
       success: false, 
       message: 'Error updating story' 
@@ -709,10 +765,12 @@ exports.deleteStory = async (req, res) => {
     await Story.findByIdAndDelete(storyId);
 
     // Update user's story count
-    await User.findByIdAndUpdate(
-      userId,
-      { $inc: { 'stats.storiesCount': -1 } }
-    );
+    if (story.status === 'published') {
+      await User.findByIdAndUpdate(
+        userId,
+        { $inc: { 'stats.storiesCount': -1 } }
+      );
+    }
 
     res.json({
       success: true,

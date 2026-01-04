@@ -8,9 +8,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Name is required'],
       trim: true,
-      maxlength: [50, 'Name cannot exceed 50 characters'],
       minlength: [2, 'Name must be at least 2 characters'],
+      maxlength: [50, 'Name cannot exceed 50 characters'],
     },
+    
     email: {
       type: String,
       required: [true, 'Email is required'],
@@ -18,80 +19,89 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [
-        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
         'Please enter a valid email',
       ],
     },
+    
     username: {
       type: String,
       unique: true,
-      sparse: true, // Allow null/undefined but enforce uniqueness when present
+      sparse: true, // ⭐ CRITICAL: Allows multiple null/undefined values
       lowercase: true,
       trim: true,
-      minlength: [3, 'Username must be at least 3 characters'],
-      maxlength: [20, 'Username cannot exceed 20 characters'],
-      match: [
-        /^[a-zA-Z0-9_]+$/,
-        'Username can only contain letters, numbers, and underscores',
-      ],
+      validate: {
+        validator: function(v) {
+          // Allow empty/null values
+          if (v == null || v === '') return true;
+          // Validate only if value exists
+          return /^[a-zA-Z0-9_]+$/.test(v) && v.length >= 3 && v.length <= 20;
+        },
+        message: 'Username must be 3-20 characters and contain only letters, numbers, and underscores'
+      }
     },
+    
     password: {
       type: String,
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,
     },
+    
     bio: {
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters'],
       default: '',
     },
+    
     location: {
       type: String,
       maxlength: [100, 'Location cannot exceed 100 characters'],
       default: '',
     },
+    
     website: {
       type: String,
       maxlength: [200, 'Website URL cannot exceed 200 characters'],
       default: '',
     },
+    
     avatar: {
       type: String,
       default: '',
     },
+    
     isActive: {
       type: Boolean,
       default: true,
     },
-
-    // ✅ Email verification status
+    
     isVerified: {
       type: Boolean,
       default: false,
     },
+    
     emailVerificationToken: {
       type: String,
       default: null,
     },
+    
     emailVerificationExpires: {
       type: Date,
       default: null,
     },
-
-    // Optional: store allowAnonymous preference
+    
     allowAnonymous: {
       type: Boolean,
       default: false,
     },
-
+    
     role: {
       type: String,
       enum: ['user', 'moderator', 'admin'],
       default: 'user',
     },
-
-    // 🎯 USER STATISTICS
+    
     stats: {
       storiesCount: { type: Number, default: 0 },
       totalViews: { type: Number, default: 0 },
@@ -100,22 +110,21 @@ const userSchema = new mongoose.Schema(
       followersCount: { type: Number, default: 0 },
       followingCount: { type: Number, default: 0 },
     },
-
-    // 🎯 FOLLOW SYSTEM
+    
     followers: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
       },
     ],
+    
     following: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
       },
     ],
-
-    // 🎯 USER PREFERENCES
+    
     preferences: {
       emailNotifications: { type: Boolean, default: true },
       profileVisibility: {
@@ -125,8 +134,7 @@ const userSchema = new mongoose.Schema(
       },
       showEmail: { type: Boolean, default: false },
     },
-
-    // 🎯 LOGIN TRACKING
+    
     lastLogin: { type: Date, default: null },
     loginCount: { type: Number, default: 0 },
   },
@@ -143,7 +151,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// 🎯 VIRTUAL FIELDS
+// ========== VIRTUALS ==========
 userSchema.virtual('displayUsername').get(function () {
   return this.username || this.name || `user_${this._id.toString().slice(-6)}`;
 });
@@ -156,7 +164,7 @@ userSchema.virtual('isFollowable').get(function () {
   return this.preferences.profileVisibility === 'public';
 });
 
-// 🎯 INDEXES FOR PERFORMANCE
+// ========== INDEXES ==========
 userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ name: 1 });
@@ -165,7 +173,7 @@ userSchema.index({ 'stats.followersCount': -1 });
 userSchema.index({ followers: 1 });
 userSchema.index({ following: 1 });
 
-// 🎯 PRE-SAVE MIDDLEWARE
+// ========== PRE-SAVE MIDDLEWARE ==========
 userSchema.pre('save', async function (next) {
   // Hash password if modified
   if (this.isModified('password')) {
@@ -188,7 +196,7 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// 🎯 INSTANCE METHODS
+// ========== INSTANCE METHODS ==========
 userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
@@ -256,7 +264,7 @@ userSchema.methods.removeFollower = function (userId) {
   }
 };
 
-// 🎯 STATIC METHODS
+// ========== STATIC METHODS ==========
 userSchema.statics.findByUsername = function (username) {
   return this.findOne({
     $or: [{ username: username.toLowerCase() }, { name: username }],

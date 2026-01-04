@@ -11,11 +11,12 @@ const {
   addComment,
   getComments,
   getStoriesByAuthor,
-  trackStoryView  // ✅ Import the function
+  trackStoryView
 } = require('../controllers/storyController');
 
-const { auth, optionalAuth } = require('../middleware/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 
+// 🎯 MIDDLEWARE LOGGING
 router.use((req, res, next) => {
   console.log(`\n📚 STORY ROUTE: ${req.method} ${req.originalUrl}`);
   console.log('Params:', req.params);
@@ -23,19 +24,24 @@ router.use((req, res, next) => {
   next();
 });
 
-// ✅ Routes in correct order
+// ========== PUBLIC ROUTES ==========
 router.get('/', optionalAuth, getAllStories);
+
+// ========== AUTHOR-SPECIFIC ROUTES (MUST COME BEFORE /:id) ==========
 router.get('/author/:authorUsername', optionalAuth, getStoriesByAuthor);
-router.post('/', auth, createStory);
 
-// ✅ This is probably line 34 - make sure trackStoryView exists
+// ========== STORY-SPECIFIC ACTIONS (MUST COME BEFORE GENERIC /:id) ==========
 router.post('/:id/view', trackStoryView);
-
-router.get('/:id', optionalAuth, getStoryById);
+router.post('/:id/like', protect, likeStory);          // ✅ POST not PATCH
+router.post('/:id/comments', protect, addComment);     // ✅ /comments not /comment
 router.get('/:id/comments', optionalAuth, getComments);
-router.put('/:id', auth, updateStory);
-router.delete('/:id', auth, deleteStory);
-router.patch('/:id/like', auth, likeStory);
-router.post('/:id/comment', auth, addComment);
+
+// ========== GENERAL STORY CRUD (MUST BE LAST) ==========
+router.get('/:id', optionalAuth, getStoryById);
+router.put('/:id', protect, updateStory);
+router.delete('/:id', protect, deleteStory);
+
+// ========== PROTECTED CREATE ROUTE ==========
+router.post('/', protect, createStory);
 
 module.exports = router;
