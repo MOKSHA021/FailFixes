@@ -11,10 +11,14 @@ const TEST_TIMEOUT = 30000;
 let authToken = '';
 let userId = '';
 let testStoryId = '';
+
+// Keep IDs short so they pass validation constraints (username <= 20 chars). [file:73]
+const suffix = Math.random().toString(36).slice(2, 8); // 6 chars
 const timestamp = Date.now();
 
 const testUser = {
-  username: `tester${timestamp}`,
+  name: 'Test User', // often required by register validation
+  username: `tester${suffix}`, // <= 12 chars, safe. [file:73]
   email: `test${timestamp}@test.com`,
   password: 'TestPass123!',
 };
@@ -25,7 +29,7 @@ beforeAll(async () => {
   }
 
   console.log('\n🔗 Connecting to test database...');
-  
+
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB\n');
@@ -39,10 +43,10 @@ afterAll(async () => {
   try {
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.db.collection('users').deleteMany({
-        email: { $regex: /test.*@test\.com/ }
+        email: { $regex: /test.*@test\.com/ },
       });
       await mongoose.connection.db.collection('stories').deleteMany({
-        title: { $regex: /Test Story/ }
+        title: { $regex: /Test Story/ },
       });
       console.log('\n🧹 Test data cleaned');
     }
@@ -60,13 +64,12 @@ describe('🏥 Health Check', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       success: true,
-      status: expect.stringMatching(/OK|healthy/i)
+      status: expect.stringMatching(/OK|healthy/i),
     });
   });
 });
 
 describe('🔐 Authentication', () => {
-  
   test('should register a new user', async () => {
     const res = await request(app)
       .post('/api/auth/register')
@@ -85,17 +88,14 @@ describe('🔐 Authentication', () => {
   });
 
   test('should reject duplicate email', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send(testUser);
-
+    const res = await request(app).post('/api/auth/register').send(testUser);
     expect(res.status).toBe(400);
   });
 
   test('should login with correct credentials', async () => {
     const loginData = {
       identifier: testUser.email,
-      password: testUser.password
+      password: testUser.password,
     };
 
     const res = await request(app)
@@ -124,12 +124,10 @@ describe('🔐 Authentication', () => {
   });
 
   test('should reject invalid credentials', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({
-        identifier: testUser.email,
-        password: 'WrongPassword123!'
-      });
+    const res = await request(app).post('/api/auth/login').send({
+      identifier: testUser.email,
+      password: 'WrongPassword123!',
+    });
 
     expect([400, 401]).toContain(res.status);
   });
@@ -149,26 +147,23 @@ describe('🔐 Authentication', () => {
   });
 
   test('should reject request without token', async () => {
-    const res = await request(app)
-      .get('/api/auth/me');
-
+    const res = await request(app).get('/api/auth/me');
     expect(res.status).toBe(401);
   });
 });
 
 describe('📚 Stories', () => {
-  
   test('should create a new story', async () => {
     if (!authToken) {
       console.warn('⚠️  Skipping story creation: No auth token');
       return;
     }
 
-    // ✅ CORRECT: Using valid category from your Story model
     const storyData = {
       title: `Test Story About Career Failure ${timestamp}`,
-      content: 'I deployed my application to production on a Friday evening without proper testing. Everything broke immediately after deployment. The database migrations failed, the API stopped responding, and users started complaining. I spent the entire weekend fixing it. This was one of the biggest failures in my career, but it taught me invaluable lessons about proper deployment procedures and testing.',
-      category: 'technology', // ✅ Valid: business, personal, education, health, relationships, career, technology, creative
+      content:
+        'I deployed my application to production on a Friday evening without proper testing. Everything broke immediately after deployment. The database migrations failed, the API stopped responding, and users started complaining. I spent the entire weekend fixing it. This was one of the biggest failures in my career, but it taught me invaluable lessons about proper deployment procedures and testing.',
+      category: 'technology',
       tags: ['deployment', 'production', 'lessons-learned'],
     };
 
@@ -233,9 +228,7 @@ describe('❌ Error Handling', () => {
   });
 
   test('should reject unauthorized requests', async () => {
-    const res = await request(app)
-      .post('/api/stories')
-      .send({ title: 'Test' });
+    const res = await request(app).post('/api/stories').send({ title: 'Test' });
     expect(res.status).toBe(401);
   });
 });
