@@ -1,8 +1,10 @@
 const Story = require('../models/Story');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const Cache = require('../utils/cache'); // ✅ ADD CACHE
 
-const userViewCounts = new Map();
+// ✅ REMOVED: In-memory userViewCounts Map (causing issues)
+// We'll use a simpler, more reliable approach
 
 // ✅ GET ALL STORIES
 exports.getAllStories = async (req, res) => {
@@ -79,7 +81,6 @@ exports.getAllStories = async (req, res) => {
     const storiesWithMeta = stories.map(s => {
       const storyAuthorUsername = s.authorUsername || s.author?.username || s.author?.name;
       
-      // Check if current user is following this story's author
       const isFollowing = req.user ? followingUsernames.some(
         followedUsername => followedUsername.toLowerCase() === storyAuthorUsername?.toLowerCase()
       ) : false;
@@ -116,11 +117,11 @@ exports.getAllStories = async (req, res) => {
   }
 };
 
-// ✅ GET STORY BY ID
+// ✅ GET STORY BY ID (WITHOUT VIEW TRACKING)
+// Views are tracked separately via POST /:id/view endpoint
 exports.getStoryById = async (req, res) => {
   try {
     const storyId = req.params.id;
-    const userId = req.user ? req.user._id.toString() : null;
 
     if (!mongoose.Types.ObjectId.isValid(storyId)) {
       return res.status(400).json({ 
@@ -147,31 +148,6 @@ exports.getStoryById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Story not found' });
     }
 
-    const userKey = userId ? `${userId}_${storyId}` : null;
-    const now = Date.now();
-    let shouldIncrement = true;
-
-    if (userId && userKey) {
-      const userViewData = userViewCounts.get(userKey) || { count: 0, lastView: 0 };
-      const timeSinceLastView = now - userViewData.lastView;
-
-      if (timeSinceLastView < 5000 || userViewData.count >= 5 || isOwner) {
-        shouldIncrement = false;
-      } else {
-        userViewCounts.set(userKey, {
-          count: userViewData.count + 1,
-          lastView: now
-        });
-      }
-    }
-
-    if (shouldIncrement) {
-      await Story.findByIdAndUpdate(storyId, { $inc: { 'stats.views': 1 } });
-      if (story.stats && story.stats.views !== undefined) {
-        story.stats.views += 1;
-      }
-    }
-
     const isLiked = req.user ? (story.likes || []).some(like => like.toString() === req.user._id.toString()) : false;
 
     res.json({
@@ -189,7 +165,135 @@ exports.getStoryById = async (req, res) => {
   }
 };
 
-// ✅ CREATE STORY WITH VALIDATION
+// ✅ TRACK STORY VIEW (SIMPLIFIED & FIXED)
+// This is called separately from frontend to track views properly
+exports.trackStoryView = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid story ID format' 
+      });
+    }
+
+    // ✅ FIX: Simple atomic increment - no complex in-memory tracking
+    const story = await Story.findByIdAndUpdate(
+      id,
+      { $inc: { 'stats.views': 1 } },
+      { new: true }
+    );
+
+    if (!story) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Story not found' 
+      });
+    }
+
+    console.log(`✅ Story view tracked: ${id} - New count: ${story.stats.views}`);
+
+    // ✅ INVALIDATE CACHE so next GET request gets fresh view count
+    await Cache.invalidateStory(id);
+
+    res.json({ 
+      success: true, 
+      views: story.stats.views,
+      message: 'Story view tracked successfully' 
+    });
+  } catch (error) {
+    console.error('❌ Story view tracking error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error tracking story view',
+      error: error.message 
+    });
+  }
+};
+
+// ✅ GET STORIES BY AUTHOR
+exports.getStoriesByAuthor = async (req, res) => {
+  try {
+    const { authorUsername } = req.params;
+    const { 
+      page = 1, 
+      limit = 20, 
+      sort = 'createdAt', 
+      order = 'desc' 
+    } = req.query;
+
+    console.log('📚 Fetching stories for author:', authorUsername);
+
+    const author = await User.findOne({
+      $or: [
+        { username: { $regex: new RegExp(`^${authorUsername}$`, 'i') } },
+        { name: { $regex: new RegExp(`^${authorUsername}$`, 'i') } }
+      ]
+    });
+    
+    if (!author) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    const sortObj = {};
+    sortObj[sort] = order === 'desc' ? -1 : 1;
+
+    const stories = await Story.find({ 
+      $or: [
+        { author: author._id },
+        { authorUsername: author.username },
+        { authorUsername: author.name }
+      ],
+      status: 'published'
+    })
+      .populate('author', 'username name avatar bio')
+      .sort(sortObj)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .lean();
+
+    const totalStories = await Story.countDocuments({ 
+      $or: [
+        { author: author._id },
+        { authorUsername: author.username },
+        { authorUsername: author.name }
+      ],
+      status: 'published'
+    });
+
+    console.log(`✅ Found ${stories.length} stories for ${authorUsername}`);
+
+    res.json({
+      success: true,
+      stories,
+      pagination: {
+        currentPage: parseInt(page),
+        totalStories,
+        totalPages: Math.ceil(totalStories / parseInt(limit)),
+        hasNext: page * limit < totalStories,
+        hasPrev: page > 1
+      },
+      author: {
+        _id: author._id,
+        username: author.username,
+        name: author.name
+      }
+    });
+  } catch (error) {
+    console.error('❌ Get stories by author error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching stories',
+      error: error.message 
+    });
+  }
+};
+
+// ✅ CREATE STORY WITH CACHE INVALIDATION
 exports.createStory = async (req, res) => {
   try {
     const {
@@ -254,7 +358,6 @@ exports.createStory = async (req, res) => {
       });
     }
 
-    // Ensure authorUsername matches exactly what's in User collection
     const authorUsername = user.username || user.name || `user_${user._id.toString().slice(-6)}`;
     
     console.log('📝 Creating story with author details:', {
@@ -294,6 +397,11 @@ exports.createStory = async (req, res) => {
         user._id, 
         { $inc: { 'stats.storiesCount': 1 } }
       );
+
+      // ✅ INVALIDATE CACHE
+      await Cache.invalidateStories();
+      await Cache.invalidateUser(user._id);
+      console.log('🗑️ Cache invalidated after story creation');
     }
 
     console.log('✅ Story created successfully:', {
@@ -321,7 +429,6 @@ exports.createStory = async (req, res) => {
   } catch (err) {
     console.error('❌ Create story error:', err);
     
-    // ✅ HANDLE VALIDATION ERRORS PROPERLY
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({ 
@@ -337,168 +444,7 @@ exports.createStory = async (req, res) => {
   }
 };
 
-// ✅ TRACK STORY VIEW
-exports.trackStoryView = async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log('📊 Tracking view for story:', id);
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid story ID format' 
-      });
-    }
-
-    const story = await Story.findByIdAndUpdate(
-      id,
-      { $inc: { 'stats.views': 1 } },
-      { new: true }
-    );
-
-    if (!story) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Story not found' 
-      });
-    }
-
-    console.log('✅ Story view tracked. New count:', story.stats.views);
-
-    res.json({ 
-      success: true, 
-      views: story.stats.views,
-      message: 'Story view tracked successfully' 
-    });
-  } catch (error) {
-    console.error('❌ Story view tracking error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error tracking story view',
-      error: error.message 
-    });
-  }
-};
-
-// ✅ GET STORIES BY AUTHOR
-exports.getStoriesByAuthor = async (req, res) => {
-  try {
-    const { authorUsername } = req.params;
-    const { 
-      page = 1, 
-      limit = 20, 
-      sort = 'createdAt', 
-      order = 'desc' 
-    } = req.query;
-
-    console.log('📚 Fetching stories for author:', authorUsername);
-
-    // Find user by username
-    const author = await User.findOne({
-      $or: [
-        { username: { $regex: new RegExp(`^${authorUsername}$`, 'i') } },
-        { name: { $regex: new RegExp(`^${authorUsername}$`, 'i') } }
-      ]
-    });
-    
-    if (!author) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
-    }
-
-    // Build sort object
-    const sortObj = {};
-    sortObj[sort] = order === 'desc' ? -1 : 1;
-
-    // Fetch stories with filtering
-    const stories = await Story.find({ 
-      $or: [
-        { author: author._id },
-        { authorUsername: author.username },
-        { authorUsername: author.name }
-      ],
-      // Filter out impact posts and other non-story content
-      $and: [
-        {
-          $or: [
-            { type: { $exists: false } },
-            { type: 'story' },
-            { type: 'fail_story' },
-            { type: 'experience' }
-          ]
-        },
-        {
-          $and: [
-            { category: { $ne: 'impact' } },
-            { title: { $not: /impact post/i } }
-          ]
-        }
-      ],
-      status: 'published'
-    })
-      .populate('author', 'username name avatar bio')
-      .sort(sortObj)
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .lean();
-
-    // Get total count for pagination
-    const totalStories = await Story.countDocuments({ 
-      $or: [
-        { author: author._id },
-        { authorUsername: author.username },
-        { authorUsername: author.name }
-      ],
-      $and: [
-        {
-          $or: [
-            { type: { $exists: false } },
-            { type: 'story' },
-            { type: 'fail_story' },
-            { type: 'experience' }
-          ]
-        },
-        {
-          $and: [
-            { category: { $ne: 'impact' } },
-            { title: { $not: /impact post/i } }
-          ]
-        }
-      ],
-      status: 'published'
-    });
-
-    console.log(`✅ Found ${stories.length} stories for ${authorUsername}`);
-
-    res.json({
-      success: true,
-      stories,
-      pagination: {
-        currentPage: parseInt(page),
-        totalStories,
-        totalPages: Math.ceil(totalStories / parseInt(limit)),
-        hasNext: page * limit < totalStories,
-        hasPrev: page > 1
-      },
-      author: {
-        _id: author._id,
-        username: author.username,
-        name: author.name
-      }
-    });
-  } catch (error) {
-    console.error('❌ Get stories by author error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching stories',
-      error: error.message 
-    });
-  }
-};
-
-// ✅ LIKE STORY
+// ✅ LIKE STORY WITH CACHE INVALIDATION
 exports.likeStory = async (req, res) => {
   try {
     if (!req.user) {
@@ -558,6 +504,10 @@ exports.likeStory = async (req, res) => {
     story.stats.likes = story.likes.length;
     await story.save();
 
+    // ✅ INVALIDATE CACHE
+    await Cache.invalidateStory(storyId);
+    console.log('🗑️ Cache invalidated after like/unlike');
+
     return res.json({
       success: true,
       message,
@@ -573,7 +523,7 @@ exports.likeStory = async (req, res) => {
   }
 };
 
-// ✅ ADD COMMENT
+// ✅ ADD COMMENT WITH CACHE INVALIDATION
 exports.addComment = async (req, res) => {
   try {
     if (!req.user) {
@@ -658,6 +608,10 @@ exports.addComment = async (req, res) => {
       };
     }
 
+    // ✅ INVALIDATE CACHE
+    await Cache.invalidateStory(storyId);
+    console.log('🗑️ Cache invalidated after comment');
+
     return res.status(201).json({
       success: true,
       message: 'Comment added successfully',
@@ -673,7 +627,7 @@ exports.addComment = async (req, res) => {
   }
 };
 
-// ✅ UPDATE STORY WITH VALIDATION
+// ✅ UPDATE STORY WITH CACHE INVALIDATION
 exports.updateStory = async (req, res) => {
   try {
     const storyId = req.params.id;
@@ -709,6 +663,11 @@ exports.updateStory = async (req, res) => {
       { new: true, runValidators: true }
     ).populate('author', 'name username avatar');
 
+    // ✅ INVALIDATE CACHE
+    await Cache.invalidateStory(storyId);
+    await Cache.invalidateUser(userId);
+    console.log('🗑️ Cache invalidated after story update');
+
     res.json({
       success: true,
       message: 'Story updated successfully',
@@ -717,7 +676,6 @@ exports.updateStory = async (req, res) => {
   } catch (err) {
     console.error('❌ Update story error:', err);
     
-    // ✅ HANDLE VALIDATION ERRORS
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({ 
@@ -733,7 +691,7 @@ exports.updateStory = async (req, res) => {
   }
 };
 
-// ✅ DELETE STORY
+// ✅ DELETE STORY WITH CACHE INVALIDATION
 exports.deleteStory = async (req, res) => {
   try {
     const storyId = req.params.id;
@@ -764,12 +722,16 @@ exports.deleteStory = async (req, res) => {
 
     await Story.findByIdAndDelete(storyId);
 
-    // Update user's story count
     if (story.status === 'published') {
       await User.findByIdAndUpdate(
         userId,
         { $inc: { 'stats.storiesCount': -1 } }
       );
+
+      // ✅ INVALIDATE CACHE
+      await Cache.invalidateStory(storyId);
+      await Cache.invalidateUser(userId);
+      console.log('🗑️ Cache invalidated after story deletion');
     }
 
     res.json({

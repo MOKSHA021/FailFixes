@@ -10,6 +10,9 @@ const app = require('./app');
 const { connectDB } = require('./utils/database');
 const config = require('./config/config');
 
+// ✅ ADD: Import Redis
+const { connectRedis, disconnectRedis, isRedisConnected } = require('./config/redis');
+
 // 🔎 Resend status on startup (no direct SDK import here)
 console.log('📧 EMAIL PROVIDER STATUS:', {
   usingResend: !!process.env.RESEND_API_KEY,
@@ -32,10 +35,25 @@ process.on('uncaughtException', (err) => {
 // Initialize server with Socket.IO
 const startServer = async () => {
   try {
-    // Connect to database first
-    await connectDB();
+    console.log('🚀 Starting FailFixes Server...\n');
 
-    // Create HTTP server from Express app
+    // ✅ Step 1: Connect to MongoDB
+    console.log('📊 Step 1/3: Connecting to MongoDB...');
+    await connectDB();
+    console.log('✅ MongoDB connected successfully\n');
+
+    // ✅ Step 2: Connect to Redis (non-blocking)
+    console.log('🔄 Step 2/3: Connecting to Redis Cloud...');
+    await connectRedis();
+    if (isRedisConnected()) {
+      console.log('✅ Redis connected successfully');
+      console.log('📦 Caching enabled for high-performance queries\n');
+    } else {
+      console.log('⚠️  Redis connection failed - continuing without cache\n');
+    }
+
+    // ✅ Step 3: Create HTTP server from Express app
+    console.log('🌐 Step 3/3: Starting HTTP server...');
     const server = http.createServer(app);
 
     // CORS for Render deployment (Socket.IO)
@@ -43,6 +61,7 @@ const startServer = async () => {
       'http://localhost:3000',
       'http://127.0.0.1:3000',
       'http://localhost:3001',
+      'https://failfixes.onrender.com',
       'https://failfixes-frontend.onrender.com',
       process.env.FRONTEND_URL,
     ].filter(Boolean);
@@ -210,6 +229,11 @@ const startServer = async () => {
 
     // Start HTTP server with Socket.IO
     server.listen(PORT, '0.0.0.0', () => {
+      const redisStatus = isRedisConnected() ? '✅ ENABLED' : '⚠️  DISABLED';
+      const dbType = config.database.uri.includes('mongodb.net')
+        ? 'MongoDB Atlas'
+        : 'Local MongoDB';
+
       console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║                     🎉 FailFixes Server                      ║
@@ -221,29 +245,35 @@ const startServer = async () => {
 ║ 🚀 API URL: http://localhost:${PORT}/api${' '.repeat(25)} ║
 ║ 🏥 Health: http://localhost:${PORT}/api/health${' '.repeat(18)} ║
 ║ 💬 Socket.IO: ENABLED${' '.repeat(33)} ║
-║ 📊 Database: ${
-        config.database.uri.includes('mongodb.net')
-          ? 'MongoDB Atlas'.padEnd(33)
-          : 'Local MongoDB'.padEnd(33)
-      } ║
+║ 📊 Database: ${dbType.padEnd(42)} ║
+║ 📦 Redis Cache: ${redisStatus.padEnd(35)} ║
 ╚══════════════════════════════════════════════════════════════╝
-
 
 🔧 Available Endpoints:
    • GET  /api/health           - Health check
    • POST /api/auth/login       - User login
    • POST /api/auth/register    - User registration
-   • GET  /api/stories          - Get stories
+   • GET  /api/stories          - Get stories (cached)
+   • GET  /api/stories/:id      - Get story by ID (cached)
+   • POST /api/stories/:id/view - Track story view
+   • POST /api/stories/:id/like - Like/unlike story
    • GET  /api/users/suggested  - Get suggested users
    • GET  /api/users/dashboard  - User dashboard
    • GET  /api/chats            - Get user chats
    • POST /api/chats/direct     - Create direct chat
 
+💡 Cache Configuration:
+   • Stories list: 5 minutes TTL
+   • Individual story: 5 minutes TTL
+   • Author stories: 10 minutes TTL
+   • Comments: 2 minutes TTL
+   • Auto-invalidation: ON
 
-💡 Tips:
+💻 Development Info:
    • Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}
    • Socket.IO endpoint: http://localhost:${PORT}/socket.io/
    • Allowed origins: ${allowedOrigins.length} configured
+   • Redis URL: ${process.env.REDIS_URL ? 'Configured' : 'Not set'}
       `);
     });
 
@@ -258,18 +288,27 @@ const startServer = async () => {
       });
     });
 
-    // Graceful shutdown handlers
-    const gracefulShutdown = (signal) => {
+    // ✅ UPDATED: Graceful shutdown handlers with Redis
+    const gracefulShutdown = async (signal) => {
       console.log(`\n👋 ${signal} received, shutting down gracefully...`);
 
       server.close(async () => {
         console.log('💤 HTTP server closed');
 
         try {
+          // Close MongoDB connection
           await require('mongoose').connection.close();
-          console.log('📤 Database connection closed');
+          console.log('📤 MongoDB connection closed');
         } catch (err) {
-          console.error('❌ Error closing database connection:', err);
+          console.error('❌ Error closing MongoDB connection:', err);
+        }
+
+        try {
+          // ✅ Close Redis connection
+          await disconnectRedis();
+          console.log('📤 Redis connection closed');
+        } catch (err) {
+          console.error('❌ Error closing Redis connection:', err);
         }
 
         console.log('✅ Graceful shutdown completed');
@@ -291,6 +330,7 @@ const startServer = async () => {
     return server;
   } catch (error) {
     console.error('❌ Server startup failed:', error);
+    console.error('Stack trace:', error.stack);
     process.exit(1);
   }
 };

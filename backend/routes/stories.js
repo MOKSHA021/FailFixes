@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const Cache = require('../utils/cache'); // ✅ ADD CACHE
 
 const {
   getAllStories,
@@ -24,24 +25,45 @@ router.use((req, res, next) => {
   next();
 });
 
-// ========== PUBLIC ROUTES ==========
-router.get('/', optionalAuth, getAllStories);
+// ========== PUBLIC ROUTES WITH CACHE ✅ ==========
 
-// ========== AUTHOR-SPECIFIC ROUTES (MUST COME BEFORE /:id) ==========
-router.get('/author/:authorUsername', optionalAuth, getStoriesByAuthor);
+// Get all stories (5 minutes cache)
+router.get('/', optionalAuth, Cache.middleware('stories', 300), getAllStories);
 
-// ========== STORY-SPECIFIC ACTIONS (MUST COME BEFORE GENERIC /:id) ==========
+// Get stories by author (10 minutes cache)
+router.get('/author/:authorUsername', optionalAuth, Cache.middleware('author-stories', 600), getStoriesByAuthor);
+
+// Get comments (2 minutes cache)
+router.get('/:id/comments', optionalAuth, Cache.middleware('comments', 120), getComments);
+
+// Get story by ID (5 minutes cache - shorter for view updates)
+router.get('/:id', optionalAuth, Cache.middleware('story', 300), getStoryById);
+
+// ========== WRITE OPERATIONS (NO CACHE) ==========
+
+// Track view (NO cache - updates view count)
 router.post('/:id/view', trackStoryView);
-router.post('/:id/like', protect, likeStory);          // ✅ POST not PATCH
-router.post('/:id/comments', protect, addComment);     // ✅ /comments not /comment
-router.get('/:id/comments', optionalAuth, getComments);
 
-// ========== GENERAL STORY CRUD (MUST BE LAST) ==========
-router.get('/:id', optionalAuth, getStoryById);
+// Like story
+router.post('/:id/like', protect, likeStory);
+
+// Comments
+router.post('/:id/comments', protect, addComment);
+
+// CRUD operations
+router.post('/', protect, createStory);
 router.put('/:id', protect, updateStory);
 router.delete('/:id', protect, deleteStory);
 
-// ========== PROTECTED CREATE ROUTE ==========
-router.post('/', protect, createStory);
+// ========== CACHE MANAGEMENT (OPTIONAL) ==========
+router.get('/cache/stats', async (req, res) => {
+  const stats = await Cache.getStats();
+  res.json({ success: true, stats });
+});
+
+router.delete('/cache/clear', protect, async (req, res) => {
+  await Cache.clearAll();
+  res.json({ success: true, message: 'All cache cleared' });
+});
 
 module.exports = router;
