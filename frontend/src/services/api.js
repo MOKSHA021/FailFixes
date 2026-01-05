@@ -15,6 +15,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// REQUEST INTERCEPTOR
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ff_token') || localStorage.getItem('token');
@@ -29,6 +30,7 @@ api.interceptors.request.use(
   }
 );
 
+// RESPONSE INTERCEPTOR
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -43,7 +45,7 @@ api.interceptors.response.use(
   }
 );
 
-// STORIES
+// ========== STORIES API ==========
 export const storiesAPI = {
   getAllStories: (params = {}) => {
     const queryParams = new URLSearchParams();
@@ -93,9 +95,10 @@ export const storiesAPI = {
 
   deleteStory: (id) => api.delete(`/stories/${id}`),
 
-  likeStory: (id) => api.patch(`/stories/${id}/like`),
+  // ✅ FIXED: Changed from PATCH to POST (matches backend)
+  likeStory: (id) => api.post(`/stories/${id}/like`),
 
-  // ✅ Increment story view count
+  // ✅ Track story view (POST request)
   incrementView: async (storyId) => {
     try {
       console.log('📊 Incrementing view for story:', storyId);
@@ -104,14 +107,15 @@ export const storiesAPI = {
       return response;
     } catch (error) {
       console.error('❌ View increment error:', error);
-      return null; // non‑fatal
+      return null; // non-fatal
     }
   },
 
   // Backward compatibility
   trackStoryView: async (storyId) => storiesAPI.incrementView(storyId),
 
-  addComment: (id, commentData) => api.post(`/stories/${id}/comment`, commentData),
+  // ✅ FIXED: Changed from /comment to /comments (matches backend)
+  addComment: (id, commentData) => api.post(`/stories/${id}/comments`, commentData),
 
   getComments: (id, params = {}) => {
     const queryParams = new URLSearchParams();
@@ -130,7 +134,7 @@ export const storiesAPI = {
     api.put(`/stories/${storyId}/comments/${commentId}`, commentData),
 };
 
-// AUTH
+// ========== AUTH API ==========
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
@@ -140,7 +144,7 @@ export const authAPI = {
   logout: () => api.post('/auth/logout'),
 };
 
-// DASHBOARD
+// ========== DASHBOARD API ==========
 export const dashboardAPI = {
   testConnection: () => api.get('/health'),
   testUserRoutes: () => api.get('/users/test'),
@@ -181,7 +185,7 @@ export const dashboardAPI = {
   updateUserProfile: (profileData) => api.put('/users/me/profile', profileData),
 };
 
-// USERS
+// ========== USERS API ==========
 export const userAPI = {
   getUserProfile: async (username) => {
     try {
@@ -291,6 +295,7 @@ export const userAPI = {
   updateProfile: (profileData) => api.put('/users/me/profile', profileData),
 };
 
+// ========== USERS API ALIAS ==========
 export const usersAPI = {
   followUser: userAPI.followUser,
   unfollowUser: userAPI.unfollowUser,
@@ -305,7 +310,7 @@ export const usersAPI = {
   searchUsers: userAPI.searchUsers,
 };
 
-// CHATS
+// ========== CHATS API ==========
 export const chatAPI = {
   getChats: () => api.get('/chats'),
 
@@ -328,7 +333,7 @@ export const chatAPI = {
   deleteChat: (chatId) => api.delete(`/chats/${chatId}`),
 };
 
-// ANALYTICS
+// ========== ANALYTICS API ==========
 export const analyticsAPI = {
   getStoryPerformance: (id) => api.get(`/stories/${id}/analytics`),
 
