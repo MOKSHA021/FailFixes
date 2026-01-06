@@ -397,13 +397,14 @@ describe('📖 Story Tests', () => {
     }, TEST_TIMEOUT);
   });
 
-  // ========== LIKE STORY TESTS ==========
-  describe('POST /api/stories/:id/like', () => {
+  // ========== LIKE STORY TESTS ========== 
+  // ✅ FIXED: Changed .post() to .patch() for all like routes
+  describe('PATCH /api/stories/:id/like', () => {
     test('should like a story when authenticated', async () => {
       if (!storyId) return;
 
       const res = await request(app)
-        .post(`/api/stories/${storyId}/like`)
+        .patch(`/api/stories/${storyId}/like`)  // ✅ CHANGED FROM .post TO .patch
         .set('Authorization', `Bearer ${readerToken}`);
 
       console.log('✅ Like story response:', res.status);
@@ -418,7 +419,7 @@ describe('📖 Story Tests', () => {
       if (!storyId) return;
 
       const res = await request(app)
-        .post(`/api/stories/${storyId}/like`)
+        .patch(`/api/stories/${storyId}/like`)  // ✅ CHANGED FROM .post TO .patch
         .set('Authorization', `Bearer ${readerToken}`);
 
       expect(res.status).toBe(200);
@@ -430,7 +431,7 @@ describe('📖 Story Tests', () => {
       if (!storyId) return;
 
       const res = await request(app)
-        .post(`/api/stories/${storyId}/like`);
+        .patch(`/api/stories/${storyId}/like`);  // ✅ CHANGED FROM .post TO .patch
 
       expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
@@ -438,7 +439,7 @@ describe('📖 Story Tests', () => {
 
     test('should reject like for invalid story ID', async () => {
       const res = await request(app)
-        .post('/api/stories/invalid-id/like')
+        .patch('/api/stories/invalid-id/like')  // ✅ CHANGED FROM .post TO .patch
         .set('Authorization', `Bearer ${readerToken}`);
 
       expect(res.status).toBe(400);
@@ -448,7 +449,7 @@ describe('📖 Story Tests', () => {
     test('should reject like for non-existent story', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const res = await request(app)
-        .post(`/api/stories/${fakeId}/like`)
+        .patch(`/api/stories/${fakeId}/like`)  // ✅ CHANGED FROM .post TO .patch
         .set('Authorization', `Bearer ${readerToken}`);
 
       expect(res.status).toBe(404);
@@ -457,12 +458,13 @@ describe('📖 Story Tests', () => {
   });
 
   // ========== ADD COMMENT TESTS ==========
-  describe('POST /api/stories/:id/comments', () => {
+  // ✅ FIXED: Changed /comments to /comment (singular)
+  describe('POST /api/stories/:id/comment', () => {
     test('should add comment to story when authenticated', async () => {
       if (!storyId) return;
 
       const res = await request(app)
-        .post(`/api/stories/${storyId}/comments`)
+        .post(`/api/stories/${storyId}/comment`)  // ✅ CHANGED FROM /comments TO /comment
         .set('Authorization', `Bearer ${readerToken}`)
         .send({
           content: 'Great story! Very inspiring and relatable.'
@@ -481,7 +483,7 @@ describe('📖 Story Tests', () => {
       if (!storyId) return;
 
       const res = await request(app)
-        .post(`/api/stories/${storyId}/comments`)
+        .post(`/api/stories/${storyId}/comment`)  // ✅ CHANGED FROM /comments TO /comment
         .send({
           content: 'This should fail'
         });
@@ -494,7 +496,7 @@ describe('📖 Story Tests', () => {
       if (!storyId) return;
 
       const res = await request(app)
-        .post(`/api/stories/${storyId}/comments`)
+        .post(`/api/stories/${storyId}/comment`)  // ✅ CHANGED FROM /comments TO /comment
         .set('Authorization', `Bearer ${readerToken}`)
         .send({
           content: ''
@@ -509,7 +511,7 @@ describe('📖 Story Tests', () => {
 
       const longComment = 'a'.repeat(1001);
       const res = await request(app)
-        .post(`/api/stories/${storyId}/comments`)
+        .post(`/api/stories/${storyId}/comment`)  // ✅ CHANGED FROM /comments TO /comment
         .set('Authorization', `Bearer ${readerToken}`)
         .send({
           content: longComment
@@ -521,7 +523,7 @@ describe('📖 Story Tests', () => {
 
     test('should reject comment for invalid story ID', async () => {
       const res = await request(app)
-        .post('/api/stories/invalid-id/comments')
+        .post('/api/stories/invalid-id/comment')  // ✅ CHANGED FROM /comments TO /comment
         .set('Authorization', `Bearer ${readerToken}`)
         .send({
           content: 'This should fail'
