@@ -10,12 +10,12 @@ import { AutoFixHigh } from '@mui/icons-material';
 import { keyframes } from '@mui/material/styles';
 import axios from 'axios';
 
-// ✅ ADD API BASE URL CONFIGURATION
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// ✅ API BASE URL CONFIGURATION
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const AuthContext = createContext();
 
+// ========== ANIMATIONS ==========
 const perfectFloat = keyframes`
   0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
   50% { transform: translateY(-8px) rotate(2deg) scale(1.02); }
@@ -32,6 +32,7 @@ const cosmicPulse = keyframes`
   }
 `;
 
+// ========== CUSTOM HOOK ==========
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
@@ -40,10 +41,44 @@ export function useAuth() {
   return context;
 }
 
+// ========== AUTH PROVIDER ==========
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ✅ CLEAR INVALID TOKENS
+  const clearAuth = () => {
+    console.log('🧹 Clearing authentication data');
+    localStorage.removeItem('ff_token');
+    localStorage.removeItem('ff_user');
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
+  // ✅ VERIFY TOKEN WITH BACKEND
+  const verifyToken = async (token) => {
+    try {
+      console.log('🔍 Verifying token with backend...');
+      const response = await axios.get(`${API_BASE_URL}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success && response.data.user) {
+        console.log('✅ Token verified successfully');
+        return response.data.user;
+      }
+
+      console.warn('⚠️ Token verification failed - invalid response');
+      return null;
+    } catch (error) {
+      console.error('❌ Token verification failed:', error.response?.data?.message || error.message);
+      return null;
+    }
+  };
+
+  // ✅ INITIALIZE AUTH ON MOUNT
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -51,28 +86,43 @@ export function AuthProvider({ children }) {
         const userData = localStorage.getItem('ff_user');
         
         if (token && userData) {
-          const parsedUser = JSON.parse(userData);
-          setUser({
-            ...parsedUser,
-            displayUsername:
-              parsedUser.username ||
-              parsedUser.name ||
-              `user_${parsedUser._id?.slice(-6)}`,
-            stats: {
-              storiesCount: 0,
-              totalViews: 0,
-              totalLikes: 0,
-              totalComments: 0,
-              followersCount: 0,
-              followingCount: 0,
-              ...parsedUser.stats,
-            },
-          });
+          console.log('🔄 Found stored credentials, verifying...');
+          
+          // Verify token is still valid
+          const verifiedUser = await verifyToken(token);
+          
+          if (verifiedUser) {
+            // Token is valid, use backend data
+            const enhancedUser = {
+              ...verifiedUser,
+              displayUsername: verifiedUser.username || verifiedUser.name || `user_${verifiedUser._id?.slice(-6)}`,
+              stats: {
+                storiesCount: 0,
+                totalViews: 0,
+                totalLikes: 0,
+                totalComments: 0,
+                followersCount: 0,
+                followingCount: 0,
+                ...verifiedUser.stats,
+              },
+            };
+            
+            setUser(enhancedUser);
+            
+            // Update local storage with fresh data
+            localStorage.setItem('ff_user', JSON.stringify(enhancedUser));
+            console.log('✅ Auth initialized with verified user:', enhancedUser.name);
+          } else {
+            // Token is invalid, clear everything
+            console.warn('⚠️ Token invalid, clearing auth');
+            clearAuth();
+          }
+        } else {
+          console.log('ℹ️ No stored credentials found');
         }
       } catch (error) {
-        console.error('Auth initialization failed:', error);
-        localStorage.removeItem('ff_token');
-        localStorage.removeItem('ff_user');
+        console.error('❌ Auth initialization failed:', error);
+        clearAuth();
       } finally {
         setTimeout(() => setLoading(false), 1500);
       }
@@ -81,7 +131,7 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
-  // ✅ Login function (unchanged, but now backend blocks unverified users)
+  // ✅ LOGIN FUNCTION
   const login = async (credentials) => {
     try {
       console.log('🔐 Attempting login to:', `${API_BASE_URL}/auth/login`);
@@ -94,20 +144,16 @@ export function AuthProvider({ children }) {
       if (response.data.success) {
         const { token, user: userData } = response.data;
         
-        console.log(
-          '✅ Login successful:',
-          userData.username || userData.name
-        );
+        console.log('✅ Login successful:', userData.username || userData.name);
         
+        // Store token and user data
         localStorage.setItem('ff_token', token);
         localStorage.setItem('ff_user', JSON.stringify(userData));
         
-        setUser({
+        // Set enhanced user state
+        const enhancedUser = {
           ...userData,
-          displayUsername:
-            userData.username ||
-            userData.name ||
-            `user_${userData._id?.slice(-6)}`,
+          displayUsername: userData.username || userData.name || `user_${userData._id?.slice(-6)}`,
           stats: {
             storiesCount: 0,
             totalViews: 0,
@@ -117,9 +163,11 @@ export function AuthProvider({ children }) {
             followingCount: 0,
             ...userData.stats,
           },
-        });
+        };
         
-        return { success: true };
+        setUser(enhancedUser);
+        
+        return { success: true, user: enhancedUser };
       } else {
         console.error('❌ Login failed:', response.data.message);
         return { 
@@ -128,26 +176,23 @@ export function AuthProvider({ children }) {
         };
       }
     } catch (error) {
-      console.error(
-        '❌ Login error:',
-        error.response?.data?.message || error.message
-      );
+      console.error('❌ Login error:', error.response?.data?.message || error.message);
+      
+      const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
+      const errorCode = error.response?.data?.code;
+      
       return { 
         success: false, 
-        error:
-          error.response?.data?.message ||
-          'Login failed. Please check your credentials.', 
+        error: errorMessage,
+        code: errorCode
       };
     }
   };
 
-  // ✅ UPDATED: Register function – only triggers email verification, no auto-login
+  // ✅ REGISTER FUNCTION
   const register = async (userData) => {
     try {
-      console.log(
-        '📝 Attempting registration to:',
-        `${API_BASE_URL}/auth/register`
-      );
+      console.log('📝 Attempting registration to:', `${API_BASE_URL}/auth/register`);
       
       const response = await axios.post(
         `${API_BASE_URL}/auth/register`,
@@ -155,17 +200,50 @@ export function AuthProvider({ children }) {
       );
       
       if (response.data.success) {
-        console.log(
-          '✅ Registration successful (verification email sent):',
-          userData.username || userData.name
-        );
+        console.log('✅ Registration successful:', userData.username || userData.name);
 
-        // Do NOT store token/user; user must verify then login.
+        // Check if email verification is required
+        if (response.data.requiresVerification) {
+          return { 
+            success: true,
+            requiresVerification: true,
+            message: response.data.message || 'Registration successful! Please check your email to verify your account.',
+          };
+        }
+
+        // If no verification required, auto-login
+        const { token, user: registeredUser } = response.data;
+        
+        if (token && registeredUser) {
+          localStorage.setItem('ff_token', token);
+          localStorage.setItem('ff_user', JSON.stringify(registeredUser));
+          
+          const enhancedUser = {
+            ...registeredUser,
+            displayUsername: registeredUser.username || registeredUser.name || `user_${registeredUser._id?.slice(-6)}`,
+            stats: {
+              storiesCount: 0,
+              totalViews: 0,
+              totalLikes: 0,
+              totalComments: 0,
+              followersCount: 0,
+              followingCount: 0,
+              ...registeredUser.stats,
+            },
+          };
+          
+          setUser(enhancedUser);
+          
+          return { 
+            success: true, 
+            user: enhancedUser,
+            message: 'Registration successful!'
+          };
+        }
+
         return { 
           success: true,
-          message:
-            response.data.message ||
-            'Registration successful! Please check your email to verify your account.',
+          message: response.data.message || 'Registration successful!',
         };
       } else {
         console.error('❌ Registration failed:', response.data.message);
@@ -175,47 +253,60 @@ export function AuthProvider({ children }) {
         };
       }
     } catch (error) {
-      console.error(
-        '❌ Registration error:',
-        error.response?.data?.message || error.message
-      );
+      console.error('❌ Registration error:', error.response?.data?.message || error.message);
       return { 
         success: false, 
-        error:
-          error.response?.data?.message ||
-          'Registration failed. Please try again.', 
+        error: error.response?.data?.message || 'Registration failed. Please try again.', 
       };
     }
   };
 
-  // ✅ Signup is an alias for register
+  // ✅ SIGNUP ALIAS
   const signup = async (userData) => {
     return await register(userData);
   };
 
-  // ✅ Logout function
+  // ✅ LOGOUT FUNCTION
   const logout = () => {
     console.log('👋 Logging out user');
-    localStorage.removeItem('ff_token');
-    localStorage.removeItem('ff_user');
-    setUser(null);
+    clearAuth();
   };
 
-  // ✅ Update user function
+  // ✅ UPDATE USER FUNCTION
   const updateUser = (updatedUser) => {
     const enhanced = {
+      ...user,
       ...updatedUser,
-      displayUsername:
-        updatedUser.username || updatedUser.name || user?.displayUsername,
+      displayUsername: updatedUser.username || updatedUser.name || user?.displayUsername,
       stats: {
         ...user?.stats,
         ...updatedUser.stats,
       },
     };
+    
     setUser(enhanced);
     localStorage.setItem('ff_user', JSON.stringify(enhanced));
+    console.log('✅ User updated:', enhanced.name);
   };
 
+  // ✅ REFRESH USER DATA
+  const refreshUser = async () => {
+    try {
+      const token = localStorage.getItem('ff_token');
+      if (!token) return;
+
+      const verifiedUser = await verifyToken(token);
+      if (verifiedUser) {
+        updateUser(verifiedUser);
+      } else {
+        clearAuth();
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing user:', error);
+    }
+  };
+
+  // ✅ LOADING SCREEN
   if (loading) {
     return (
       <Backdrop
@@ -289,6 +380,8 @@ export function AuthProvider({ children }) {
     signup,
     logout,
     updateUser,
+    refreshUser,
+    clearAuth,
   };
 
   return (
@@ -297,3 +390,5 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+export default AuthContext;

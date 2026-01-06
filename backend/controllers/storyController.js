@@ -90,7 +90,13 @@ exports.getAllStories = async (req, res) => {
         isLiked: req.user ? (s.likes || []).some(like => like.toString() === req.user._id.toString()) : false,
         isFollowing: isFollowing,
         displayAuthor: s.authorUsername || s.author?.username || s.author?.name || 'Anonymous',
-        excerpt: s.excerpt || (s.content ? s.content.substring(0, 150) + '...' : '')
+        excerpt: s.excerpt || (s.content ? s.content.substring(0, 150) + '...' : ''),
+        // ✅ Ensure stats are properly returned
+        stats: {
+          likes: s.likes?.length || s.stats?.likes || 0,
+          comments: s.comments?.length || s.stats?.comments || 0,
+          views: s.stats?.views || 0
+        }
       };
     });
 
@@ -180,7 +186,13 @@ exports.getStoryById = async (req, res) => {
         ...story.toObject(),
         readTime: story.metadata?.readTime || Math.ceil((story.content || '').split(' ').length / 200),
         isLiked,
-        displayAuthor: story.authorUsername || story.author?.username || story.author?.name
+        displayAuthor: story.authorUsername || story.author?.username || story.author?.name,
+        // ✅ Ensure stats are properly calculated
+        stats: {
+          likes: story.likes?.length || 0,
+          comments: story.comments?.length || 0,
+          views: story.stats?.views || 0
+        }
       }
     });
   } catch (err) {
@@ -210,7 +222,6 @@ exports.createStory = async (req, res) => {
       });
     }
 
-    // ✅ VALIDATE BEFORE DATABASE OPERATIONS
     if (!title || !content) {
       return res.status(400).json({
         success: false,
@@ -254,7 +265,6 @@ exports.createStory = async (req, res) => {
       });
     }
 
-    // Ensure authorUsername matches exactly what's in User collection
     const authorUsername = user.username || user.name || `user_${user._id.toString().slice(-6)}`;
     
     console.log('📝 Creating story with author details:', {
@@ -321,7 +331,6 @@ exports.createStory = async (req, res) => {
   } catch (err) {
     console.error('❌ Create story error:', err);
     
-    // ✅ HANDLE VALIDATION ERRORS PROPERLY
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({ 
@@ -393,7 +402,6 @@ exports.getStoriesByAuthor = async (req, res) => {
 
     console.log('📚 Fetching stories for author:', authorUsername);
 
-    // Find user by username
     const author = await User.findOne({
       $or: [
         { username: { $regex: new RegExp(`^${authorUsername}$`, 'i') } },
@@ -408,18 +416,15 @@ exports.getStoriesByAuthor = async (req, res) => {
       });
     }
 
-    // Build sort object
     const sortObj = {};
     sortObj[sort] = order === 'desc' ? -1 : 1;
 
-    // Fetch stories with filtering
     const stories = await Story.find({ 
       $or: [
         { author: author._id },
         { authorUsername: author.username },
         { authorUsername: author.name }
       ],
-      // Filter out impact posts and other non-story content
       $and: [
         {
           $or: [
@@ -444,7 +449,6 @@ exports.getStoriesByAuthor = async (req, res) => {
       .skip((parseInt(page) - 1) * parseInt(limit))
       .lean();
 
-    // Get total count for pagination
     const totalStories = await Story.countDocuments({ 
       $or: [
         { author: author._id },
@@ -498,7 +502,7 @@ exports.getStoriesByAuthor = async (req, res) => {
   }
 };
 
-// ✅ LIKE STORY
+// ✅ LIKE STORY WITH PREFERENCE TRACKING
 exports.likeStory = async (req, res) => {
   try {
     if (!req.user) {
@@ -511,6 +515,8 @@ exports.likeStory = async (req, res) => {
     const userId = req.user._id;
     const storyId = req.params.id;
 
+    console.log('👍 Like story request:', { userId: userId.toString(), storyId });
+
     if (!mongoose.Types.ObjectId.isValid(storyId)) {
       return res.status(400).json({ 
         success: false, 
@@ -518,7 +524,9 @@ exports.likeStory = async (req, res) => {
       });
     }
 
-    const story = await Story.findById(storyId).select('_id title status author likes stats');
+    // ✅ Get full story with category and tags for preference tracking
+    const story = await Story.findById(storyId)
+      .select('_id title category tags status author likes stats');
     
     if (!story) {
       return res.status(404).json({ 
@@ -534,6 +542,7 @@ exports.likeStory = async (req, res) => {
       });
     }
 
+    // Initialize arrays if they don't exist
     if (!story.likes) {
       story.likes = [];
     }
@@ -546,17 +555,51 @@ exports.likeStory = async (req, res) => {
     let message;
 
     if (likeIndex === -1) {
+      // ✅ ADDING LIKE
       story.likes.push(userId);
       isLiked = true;
       message = 'Story liked';
+
+      console.log('➕ Adding like. Story data:', {
+        category: story.category,
+        tags: story.tags
+      });
+
+      // ✅ UPDATE USER PREFERENCES BASED ON LIKED STORY
+      try {
+        const user = await User.findById(userId);
+        if (user) {
+          await user.updatePreferencesFromLike(story);
+          console.log('✅ User preferences updated after like');
+        }
+      } catch (prefError) {
+        console.error('⚠️ Error updating preferences (non-critical):', prefError);
+      }
+
     } else {
+      // ✅ REMOVING LIKE
       story.likes.splice(likeIndex, 1);
       isLiked = false;
       message = 'Like removed';
+
+      console.log('➖ Removing like');
+
+      // ✅ REMOVE FROM USER'S LIKED STORIES
+      try {
+        await User.findByIdAndUpdate(userId, {
+          $pull: { likedStories: storyId }
+        });
+        console.log('✅ Removed from liked stories');
+      } catch (removeError) {
+        console.error('⚠️ Error removing from liked stories (non-critical):', removeError);
+      }
     }
 
+    // ✅ Update stats
     story.stats.likes = story.likes.length;
     await story.save();
+
+    console.log('✅ Story saved. New like count:', story.stats.likes);
 
     return res.json({
       success: true,
@@ -568,7 +611,8 @@ exports.likeStory = async (req, res) => {
     console.error('❌ Like story error:', err);
     res.status(500).json({ 
       success: false, 
-      message: 'Error toggling like'
+      message: 'Error toggling like',
+      error: err.message
     });
   }
 };
@@ -586,6 +630,8 @@ exports.addComment = async (req, res) => {
     const userId = req.user._id;
     const storyId = req.params.id;
     const { content } = req.body;
+
+    console.log('💬 Add comment request:', { userId: userId.toString(), storyId, contentLength: content?.length });
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ 
@@ -608,7 +654,8 @@ exports.addComment = async (req, res) => {
       });
     }
 
-    const story = await Story.findById(storyId).select('_id title status comments stats');
+    const story = await Story.findById(storyId)
+      .select('_id title status comments stats');
     
     if (!story) {
       return res.status(404).json({ 
@@ -624,6 +671,7 @@ exports.addComment = async (req, res) => {
       });
     }
 
+    // Initialize if they don't exist
     if (!story.comments) {
       story.comments = [];
     }
@@ -642,6 +690,9 @@ exports.addComment = async (req, res) => {
     
     await story.save();
 
+    console.log('✅ Comment saved. New comment count:', story.stats.comments);
+
+    // Populate user details
     await story.populate({
       path: 'comments.user',
       select: 'name username avatar'
@@ -649,6 +700,7 @@ exports.addComment = async (req, res) => {
 
     const addedComment = story.comments[story.comments.length - 1];
 
+    // Fallback if population fails
     if (!addedComment.user || !addedComment.user.name) {
       addedComment.user = {
         _id: req.user._id,
@@ -657,6 +709,8 @@ exports.addComment = async (req, res) => {
         avatar: req.user.avatar
       };
     }
+
+    console.log('✅ Comment added successfully');
 
     return res.status(201).json({
       success: true,
@@ -668,7 +722,8 @@ exports.addComment = async (req, res) => {
     console.error('❌ Add comment error:', err);
     res.status(500).json({ 
       success: false, 
-      message: 'Error adding comment'
+      message: 'Error adding comment',
+      error: err.message
     });
   }
 };
@@ -717,7 +772,6 @@ exports.updateStory = async (req, res) => {
   } catch (err) {
     console.error('❌ Update story error:', err);
     
-    // ✅ HANDLE VALIDATION ERRORS
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({ 
@@ -764,7 +818,6 @@ exports.deleteStory = async (req, res) => {
 
     await Story.findByIdAndDelete(storyId);
 
-    // Update user's story count
     if (story.status === 'published') {
       await User.findByIdAndUpdate(
         userId,

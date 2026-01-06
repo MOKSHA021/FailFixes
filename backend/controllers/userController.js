@@ -3,6 +3,65 @@ const Story = require('../models/Story');
 const mongoose = require('mongoose');
 
 // 🎯 BULLETPROOF FOLLOW FUNCTION
+
+// ✅ GRAPH-BASED: Get suggested users with multiple strategies
+exports.getSuggestedUsers = async (req, res) => {
+  console.log('\n🤝 === GET SUGGESTED USERS (GRAPH-BASED) ===');
+  
+  try {
+    const currentUserId = req.user._id;
+    const { limit = 10, page = 1 } = req.query;
+    
+    console.log('Request details:', {
+      userId: currentUserId.toString(),
+      limit,
+      page,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Use the enhanced static method
+    const suggestedUsers = await User.findSuggestedUsers(
+      currentUserId,
+      parseInt(limit) * parseInt(page)
+    );
+    
+    // Paginate results
+    const start = (parseInt(page) - 1) * parseInt(limit);
+    const end = start + parseInt(limit);
+    const paginatedUsers = suggestedUsers.slice(start, end);
+    
+    console.log('✅ Suggestions generated:', {
+      totalSuggestions: suggestedUsers.length,
+      returnedCount: paginatedUsers.length,
+      strategies: [...new Set(suggestedUsers.flatMap(u => u.reasons))]
+    });
+    
+    res.json({
+      success: true,
+      users: paginatedUsers,
+      total: suggestedUsers.length,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(suggestedUsers.length / parseInt(limit)),
+        hasNext: end < suggestedUsers.length,
+        hasPrev: parseInt(page) > 1
+      },
+      algorithm: 'hybrid_graph',
+      strategies: ['friends_of_friends', 'similar_interests', 'trending']
+    });
+    
+    console.log('=== END GET SUGGESTED USERS ===\n');
+    
+  } catch (err) {
+    console.error('❌ Get suggested users error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching suggested users',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
 exports.followUser = async (req, res) => {
   const startTime = Date.now();
   console.log('\n=== FOLLOW USER CONTROLLER START ===');

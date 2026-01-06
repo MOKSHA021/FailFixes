@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 // ✅ Base URL: includes /api and has NO trailing slash
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 console.log('🔗 API Base URL:', API_BASE_URL);
 
@@ -15,12 +14,21 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// ✅ REQUEST INTERCEPTOR
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ff_token') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Debug logging
+    console.log(`📤 ${config.method.toUpperCase()} ${config.url}`, {
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      hasAuth: !!token
+    });
+    
     return config;
   },
   (error) => {
@@ -29,9 +37,18 @@ api.interceptors.request.use(
   }
 );
 
+// ✅ RESPONSE INTERCEPTOR
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`✅ ${response.config.method.toUpperCase()} ${response.config.url} - ${response.status}`);
+    return response;
+  },
   (error) => {
+    console.error(`❌ ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status}`, {
+      message: error.message,
+      data: error.response?.data
+    });
+    
     if (error.response?.status === 401) {
       console.log('🔐 Authentication failed - redirecting to login');
       localStorage.removeItem('ff_token');
@@ -43,8 +60,26 @@ api.interceptors.response.use(
   }
 );
 
-// STORIES
+// ✅ VIEW TRACKING CACHE (prevents duplicate increments)
+const viewCache = new Map();
+const VIEW_CACHE_DURATION = 5000; // 5 seconds
+
+const shouldTrackView = (key) => {
+  const now = Date.now();
+  const lastTracked = viewCache.get(key);
+  
+  if (lastTracked && now - lastTracked < VIEW_CACHE_DURATION) {
+    console.log('⏭️  Skipping duplicate view tracking:', key);
+    return false;
+  }
+  
+  viewCache.set(key, now);
+  return true;
+};
+
+// ========== STORIES API ==========
 export const storiesAPI = {
+  // Get all stories with filters
   getAllStories: (params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -52,19 +87,14 @@ export const storiesAPI = {
         queryParams.append(key, value);
       }
     });
-    return api.get(`/stories?${queryParams.toString()}`);
+    const queryString = queryParams.toString();
+    return api.get(`/stories${queryString ? `?${queryString}` : ''}`);
   },
 
-  getStories: (params = {}) => {
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        queryParams.append(key, value);
-      }
-    });
-    return api.get(`/stories?${queryParams.toString()}`);
-  },
+  // Alias for getAllStories
+  getStories: (params = {}) => storiesAPI.getAllStories(params),
 
+  // Get stories by specific author
   getStoriesByAuthor: async (authorUsername, params = {}) => {
     try {
       console.log('📡 Fetching stories for author:', authorUsername);
@@ -74,8 +104,9 @@ export const storiesAPI = {
           queryParams.append(key, value);
         }
       });
+      const queryString = queryParams.toString();
       const response = await api.get(
-        `/stories/author/${authorUsername}?${queryParams.toString()}`
+        `/stories/author/${authorUsername}${queryString ? `?${queryString}` : ''}`
       );
       console.log('✅ Stories API response:', response.data);
       return response;
@@ -85,18 +116,45 @@ export const storiesAPI = {
     }
   },
 
-  getStoryById: (id) => api.get(`/stories/${id}`),
+  // Get single story by ID
+  getStoryById: (id) => {
+    console.log('📖 Fetching story:', id);
+    return api.get(`/stories/${id}`);
+  },
 
-  createStory: (storyData) => api.post('/stories', storyData),
+  // Create new story
+  createStory: (storyData) => {
+    console.log('✍️ Creating story:', storyData.title);
+    return api.post('/stories', storyData);
+  },
 
-  updateStory: (id, storyData) => api.put(`/stories/${id}`, storyData),
+  // Update existing story
+  updateStory: (id, storyData) => {
+    console.log('📝 Updating story:', id);
+    return api.put(`/stories/${id}`, storyData);
+  },
 
-  deleteStory: (id) => api.delete(`/stories/${id}`),
+  // Delete story
+  deleteStory: (id) => {
+    console.log('🗑️ Deleting story:', id);
+    return api.delete(`/stories/${id}`);
+  },
 
-  likeStory: (id) => api.patch(`/stories/${id}/like`),
+  // ✅ LIKE STORY - Using PATCH
+  likeStory: (id) => {
+    console.log('❤️ Liking story:', id);
+    return api.patch(`/stories/${id}/like`);
+  },
 
-  // ✅ Increment story view count
+  // Track story view with deduplication
   incrementView: async (storyId) => {
+    const cacheKey = `story-view-${storyId}`;
+    
+    if (!shouldTrackView(cacheKey)) {
+      console.log('⏭️  View already tracked recently for story:', storyId);
+      return { data: { success: true, cached: true } };
+    }
+
     try {
       console.log('📊 Incrementing view for story:', storyId);
       const response = await api.post(`/stories/${storyId}/view`);
@@ -104,15 +162,20 @@ export const storiesAPI = {
       return response;
     } catch (error) {
       console.error('❌ View increment error:', error);
-      return null; // non‑fatal
+      return { data: { success: false, error: error.message } };
     }
   },
 
-  // Backward compatibility
-  trackStoryView: async (storyId) => storiesAPI.incrementView(storyId),
+  // Backward compatibility alias
+  trackStoryView: (storyId) => storiesAPI.incrementView(storyId),
 
-  addComment: (id, commentData) => api.post(`/stories/${id}/comment`, commentData),
+  // Add comment to story
+  addComment: (id, commentData) => {
+    console.log('💬 Adding comment to story:', id);
+    return api.post(`/stories/${id}/comment`, commentData);
+  },
 
+  // Get story comments
   getComments: (id, params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -120,17 +183,24 @@ export const storiesAPI = {
         queryParams.append(key, value);
       }
     });
-    return api.get(`/stories/${id}/comments?${queryParams.toString()}`);
+    const queryString = queryParams.toString();
+    return api.get(`/stories/${id}/comments${queryString ? `?${queryString}` : ''}`);
   },
 
-  deleteComment: (storyId, commentId) =>
-    api.delete(`/stories/${storyId}/comments/${commentId}`),
+  // Delete comment
+  deleteComment: (storyId, commentId) => {
+    console.log('🗑️ Deleting comment:', commentId);
+    return api.delete(`/stories/${storyId}/comments/${commentId}`);
+  },
 
-  updateComment: (storyId, commentId, commentData) =>
-    api.put(`/stories/${storyId}/comments/${commentId}`, commentData),
+  // Update comment
+  updateComment: (storyId, commentId, commentData) => {
+    console.log('✏️ Updating comment:', commentId);
+    return api.put(`/stories/${storyId}/comments/${commentId}`, commentData);
+  },
 };
 
-// AUTH
+// ========== AUTH API ==========
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
@@ -140,7 +210,7 @@ export const authAPI = {
   logout: () => api.post('/auth/logout'),
 };
 
-// DASHBOARD
+// ========== DASHBOARD API ==========
 export const dashboardAPI = {
   testConnection: () => api.get('/health'),
   testUserRoutes: () => api.get('/users/test'),
@@ -171,7 +241,8 @@ export const dashboardAPI = {
         queryParams.append(key, value);
       }
     });
-    return api.get(`/users/me/stories?${queryParams.toString()}`);
+    const queryString = queryParams.toString();
+    return api.get(`/users/me/stories${queryString ? `?${queryString}` : ''}`);
   },
 
   getUserAnalytics: () => api.get('/users/me/analytics'),
@@ -181,8 +252,9 @@ export const dashboardAPI = {
   updateUserProfile: (profileData) => api.put('/users/me/profile', profileData),
 };
 
-// USERS
+// ========== USERS API ==========
 export const userAPI = {
+  // Get user profile
   getUserProfile: async (username) => {
     try {
       console.log('📡 Fetching user profile:', username);
@@ -195,7 +267,15 @@ export const userAPI = {
     }
   },
 
+  // Track profile view with deduplication
   incrementProfileView: async (username) => {
+    const cacheKey = `profile-view-${username}`;
+    
+    if (!shouldTrackView(cacheKey)) {
+      console.log('⏭️  Profile view already tracked recently:', username);
+      return { data: { success: true, cached: true } };
+    }
+
     try {
       console.log('📊 Incrementing profile view:', username);
       const response = await api.post(`/users/profile/${username}/view`);
@@ -203,12 +283,14 @@ export const userAPI = {
       return response;
     } catch (error) {
       console.error('❌ Profile view increment error:', error);
-      return null;
+      return { data: { success: false, error: error.message } };
     }
   },
 
-  trackProfileView: async (username) => userAPI.incrementProfileView(username),
+  // Backward compatibility alias
+  trackProfileView: (username) => userAPI.incrementProfileView(username),
 
+  // Follow user
   followUser: async (username) => {
     try {
       console.log('📡 Following user via API:', username);
@@ -221,6 +303,7 @@ export const userAPI = {
     }
   },
 
+  // Unfollow user
   unfollowUser: async (username) => {
     try {
       console.log('📡 Unfollowing user via API:', username);
@@ -233,6 +316,7 @@ export const userAPI = {
     }
   },
 
+  // Get user followers
   getUserFollowers: (username, params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -240,9 +324,11 @@ export const userAPI = {
         queryParams.append(key, value);
       }
     });
-    return api.get(`/users/${username}/followers?${queryParams.toString()}`);
+    const queryString = queryParams.toString();
+    return api.get(`/users/${username}/followers${queryString ? `?${queryString}` : ''}`);
   },
 
+  // Get user following
   getUserFollowing: (username, params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -250,9 +336,11 @@ export const userAPI = {
         queryParams.append(key, value);
       }
     });
-    return api.get(`/users/${username}/following?${queryParams.toString()}`);
+    const queryString = queryParams.toString();
+    return api.get(`/users/${username}/following${queryString ? `?${queryString}` : ''}`);
   },
 
+  // Get personalized feed
   getUserFeed: async (params = {}) => {
     try {
       console.log('📡 Fetching user feed via API with params:', params);
@@ -262,7 +350,8 @@ export const userAPI = {
           queryParams.append(key, value);
         }
       });
-      const response = await api.get(`/users/me/feed?${queryParams.toString()}`);
+      const queryString = queryParams.toString();
+      const response = await api.get(`/users/me/feed${queryString ? `?${queryString}` : ''}`);
       console.log('✅ Feed API response:', {
         success: response.data.success,
         storiesCount: response.data.stories?.length || 0,
@@ -276,8 +365,10 @@ export const userAPI = {
     }
   },
 
+  // Get suggested users
   getSuggestedUsers: () => api.get('/users/suggested'),
 
+  // Search users
   searchUsers: (params = {}) => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -285,12 +376,15 @@ export const userAPI = {
         queryParams.append(key, value);
       }
     });
-    return api.get(`/users/search?${queryParams.toString()}`);
+    const queryString = queryParams.toString();
+    return api.get(`/users/search${queryString ? `?${queryString}` : ''}`);
   },
 
+  // Update user profile
   updateProfile: (profileData) => api.put('/users/me/profile', profileData),
 };
 
+// ========== USERS API ALIASES ==========
 export const usersAPI = {
   followUser: userAPI.followUser,
   unfollowUser: userAPI.unfollowUser,
@@ -305,7 +399,7 @@ export const usersAPI = {
   searchUsers: userAPI.searchUsers,
 };
 
-// CHATS
+// ========== CHATS API ==========
 export const chatAPI = {
   getChats: () => api.get('/chats'),
 
@@ -318,7 +412,8 @@ export const chatAPI = {
         queryParams.append(key, value);
       }
     });
-    return api.get(`/chats/${chatId}/messages?${queryParams.toString()}`);
+    const queryString = queryParams.toString();
+    return api.get(`/chats/${chatId}/messages${queryString ? `?${queryString}` : ''}`);
   },
 
   sendMessage: (chatId, messageData) => api.post(`/chats/${chatId}/messages`, messageData),
@@ -328,7 +423,7 @@ export const chatAPI = {
   deleteChat: (chatId) => api.delete(`/chats/${chatId}`),
 };
 
-// ANALYTICS
+// ========== ANALYTICS API ==========
 export const analyticsAPI = {
   getStoryPerformance: (id) => api.get(`/stories/${id}/analytics`),
 

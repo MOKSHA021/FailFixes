@@ -14,6 +14,7 @@
     "test:models": "cross-env NODE_ENV=test jest tests/models.test.js --forceExit",
     "test:watch": "cross-env NODE_ENV=test jest --watch --detectOpenHandles",
     "test:ci": "cross-env NODE_ENV=test jest --coverage --forceExit --detectOpenHandles --maxWorkers=1 --ci",
+    "test:performance": "node scripts/testPerformance.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
